@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -29,11 +28,13 @@ export function NewQuoteDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [validity, setValidity] = useState("");
+  const [customerNotes, setCustomerNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [pending, startTransition] = useTransition();
 
   const reset = () => {
     setValidity("");
+    setCustomerNotes("");
     setInternalNotes("");
   };
 
@@ -43,13 +44,14 @@ export function NewQuoteDialog({
       const result = await createQuote({
         customer_id: customerId,
         validity_date: validity || null,
+        customer_notes: customerNotes || null,
         internal_notes: internalNotes || null,
       });
       if (!result.ok) {
         toast.error(result.error.message);
         return;
       }
-      toast.success("Quote created");
+      toast.success("Draft quote created");
       reset();
       setOpen(false);
       router.push(`/quotes/${result.data.id}`);
@@ -64,16 +66,21 @@ export function NewQuoteDialog({
         if (!o) reset();
       }}
     >
-      <DialogTrigger render={<Button size="sm" />}>New quote ↗</DialogTrigger>
+      <DialogTrigger
+        render={<Button className="h-10 rounded-full px-5" />}
+      >
+        New quote ↗
+      </DialogTrigger>
       <DialogContent>
-        <form onSubmit={onSubmit}>
-          <DialogHeader>
+        <form onSubmit={onSubmit} className="space-y-5">
+          <DialogHeader className="space-y-1.5">
             <DialogTitle>New quote for {customerName}</DialogTitle>
             <DialogDescription>
-              Optional metadata. You can change anything from the builder.
+              Fill in what you know now — lines go in the builder.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 py-4">
+
+          <div className="grid gap-4">
             <div className="grid gap-1.5">
               <Label htmlFor="validity">Validity date</Label>
               <Input
@@ -83,27 +90,47 @@ export function NewQuoteDialog({
                 onChange={(e) => setValidity(e.target.value)}
               />
             </div>
+
             <div className="grid gap-1.5">
-              <Label htmlFor="notes">
+              <Label htmlFor="cust-notes">
+                Customer notes{" "}
+                <span className="text-xs text-muted-foreground font-normal">
+                  (shown on the PDF)
+                </span>
+              </Label>
+              <Textarea
+                id="cust-notes"
+                rows={2}
+                value={customerNotes}
+                onChange={(e) => setCustomerNotes(e.target.value)}
+                placeholder="Net-30. Standard ground freight."
+              />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="int-notes">
                 Internal notes{" "}
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground font-normal">
                   (never on customer PDF)
                 </span>
               </Label>
               <Textarea
-                id="notes"
-                rows={3}
+                id="int-notes"
+                rows={2}
                 value={internalNotes}
                 onChange={(e) => setInternalNotes(e.target.value)}
+                placeholder="Reminders for the team…"
               />
             </div>
           </div>
+
           <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>
-              Cancel
-            </DialogClose>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Creating…" : "Create draft"}
+            <Button
+              type="submit"
+              disabled={pending}
+              className="h-11 rounded-full w-full text-sm"
+            >
+              {pending ? "Creating…" : "Create draft quote"}
             </Button>
           </DialogFooter>
         </form>

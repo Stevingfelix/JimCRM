@@ -12,9 +12,13 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 9% 12%;
 
-    /* Brand — emerald (CAP industrial vibe) */
-    --primary: 158 64% 36%; /* emerald-600 */
+    /* Brand — emerald → teal gradient (CAP industrial vibe, with depth) */
+    --primary: 158 64% 36%; /* emerald-600 — solid fallback */
     --primary-foreground: 0 0% 100%;
+    --primary-end: 174 64% 36%; /* teal-600 — gradient end */
+    --brand-gradient: linear-gradient(135deg, hsl(158 64% 32%) 0%, hsl(174 64% 36%) 100%);
+    --brand-gradient-hover: linear-gradient(135deg, hsl(158 64% 28%) 0%, hsl(174 64% 32%) 100%);
+    --brand-gradient-soft: linear-gradient(135deg, hsl(158 64% 96%) 0%, hsl(174 64% 96%) 100%);
 
     /* Neutrals */
     --secondary: 220 14% 93%;
@@ -41,6 +45,10 @@
     --popover-foreground: 220 14% 96%;
     --primary: 158 64% 52%;
     --primary-foreground: 220 13% 9%;
+    --primary-end: 174 64% 52%;
+    --brand-gradient: linear-gradient(135deg, hsl(158 64% 48%) 0%, hsl(174 64% 52%) 100%);
+    --brand-gradient-hover: linear-gradient(135deg, hsl(158 64% 52%) 0%, hsl(174 64% 56%) 100%);
+    --brand-gradient-soft: linear-gradient(135deg, hsl(158 60% 12%) 0%, hsl(174 60% 14%) 100%);
     --secondary: 220 13% 16%;
     --secondary-foreground: 220 14% 96%;
     --muted: 220 13% 16%;
@@ -61,5 +69,24 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer utilities {
+  .bg-brand-gradient {
+    background-image: var(--brand-gradient);
+  }
+  .bg-brand-gradient:hover {
+    background-image: var(--brand-gradient-hover);
+  }
+  .bg-brand-gradient-soft {
+    background-image: var(--brand-gradient-soft);
+  }
+  .text-brand-gradient {
+    background-image: var(--brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
   }
 }

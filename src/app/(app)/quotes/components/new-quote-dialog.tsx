@@ -6,8 +6,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -29,6 +29,7 @@ export function NewQuoteDialog() {
   const [results, setResults] = useState<Customer[]>([]);
   const [selected, setSelected] = useState<Customer | null>(null);
   const [validity, setValidity] = useState("");
+  const [customerNotes, setCustomerNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +39,7 @@ export function NewQuoteDialog() {
     setResults([]);
     setSelected(null);
     setValidity("");
+    setCustomerNotes("");
     setInternalNotes("");
   };
 
@@ -62,13 +64,14 @@ export function NewQuoteDialog() {
       const result = await createQuote({
         customer_id: selected.id,
         validity_date: validity || null,
+        customer_notes: customerNotes || null,
         internal_notes: internalNotes || null,
       });
       if (!result.ok) {
         toast.error(result.error.message);
         return;
       }
-      toast.success("Quote created");
+      toast.success("Draft quote created");
       reset();
       setOpen(false);
       router.push(`/quotes/${result.data.id}`);
@@ -83,17 +86,25 @@ export function NewQuoteDialog() {
         if (!o) reset();
       }}
     >
-      <DialogTrigger render={<Button size="sm" />}>+ New quote</DialogTrigger>
+      <DialogTrigger
+        render={<Button className="h-10 rounded-full px-5" />}
+      >
+        + New quote
+      </DialogTrigger>
       <DialogContent>
-        <form onSubmit={onSubmit}>
-          <DialogHeader>
+        <form onSubmit={onSubmit} className="space-y-5">
+          <DialogHeader className="space-y-1.5">
             <DialogTitle>New quote</DialogTitle>
+            <DialogDescription>
+              Fill in what you know now — lines go in the builder.
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 py-4">
+
+          <div className="grid gap-4">
             <div className="grid gap-1.5">
               <Label htmlFor="customer">Customer *</Label>
               {selected ? (
-                <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                <div className="flex items-center justify-between rounded-xl border bg-muted/30 px-4 py-2.5 h-11">
                   <span className="text-sm font-medium">{selected.name}</span>
                   <button
                     type="button"
@@ -113,19 +124,19 @@ export function NewQuoteDialog() {
                     ref={inputRef}
                     id="customer"
                     autoFocus
-                    placeholder="Type to search…"
+                    placeholder="Type to search customers…"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                   />
                   {results.length > 0 && (
-                    <div className="rounded-md border max-h-48 overflow-auto">
+                    <div className="rounded-xl border bg-card max-h-48 overflow-auto">
                       {results.map((c) => (
                         <button
                           type="button"
                           key={c.id}
                           onClick={() => setSelected(c)}
                           className={cn(
-                            "block w-full text-left px-3 py-1.5 text-sm hover:bg-muted",
+                            "block w-full text-left px-4 py-2 text-sm hover:bg-muted",
                           )}
                         >
                           {c.name}
@@ -136,6 +147,7 @@ export function NewQuoteDialog() {
                 </>
               )}
             </div>
+
             <div className="grid gap-1.5">
               <Label htmlFor="validity">Validity date</Label>
               <Input
@@ -145,27 +157,47 @@ export function NewQuoteDialog() {
                 onChange={(e) => setValidity(e.target.value)}
               />
             </div>
+
             <div className="grid gap-1.5">
-              <Label htmlFor="notes">
+              <Label htmlFor="cust-notes">
+                Customer notes{" "}
+                <span className="text-xs text-muted-foreground font-normal">
+                  (shown on the PDF)
+                </span>
+              </Label>
+              <Textarea
+                id="cust-notes"
+                rows={2}
+                value={customerNotes}
+                onChange={(e) => setCustomerNotes(e.target.value)}
+                placeholder="Net-30. Standard ground freight."
+              />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="int-notes">
                 Internal notes{" "}
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground font-normal">
                   (never on customer PDF)
                 </span>
               </Label>
               <Textarea
-                id="notes"
-                rows={3}
+                id="int-notes"
+                rows={2}
                 value={internalNotes}
                 onChange={(e) => setInternalNotes(e.target.value)}
+                placeholder="Reminders for the team…"
               />
             </div>
           </div>
+
           <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>
-              Cancel
-            </DialogClose>
-            <Button type="submit" disabled={pending || !selected}>
-              {pending ? "Creating…" : "Create draft"}
+            <Button
+              type="submit"
+              disabled={pending || !selected}
+              className="h-11 rounded-full w-full text-sm"
+            >
+              {pending ? "Creating…" : "Create draft quote"}
             </Button>
           </DialogFooter>
         </form>

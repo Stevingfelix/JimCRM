@@ -12,6 +12,7 @@ const QUOTE_STATUSES = ["draft", "sent", "won", "lost", "expired"] as const;
 const CreateQuoteSchema = z.object({
   customer_id: z.string().uuid(),
   validity_date: z.string().date().optional().nullable(),
+  customer_notes: z.string().trim().max(4000).optional().nullable(),
   internal_notes: z.string().trim().max(2000).optional().nullable(),
 });
 
@@ -35,6 +36,7 @@ export async function createQuote(
       .insert({
         customer_id: parsed.data.customer_id,
         validity_date: parsed.data.validity_date ?? null,
+        customer_notes: parsed.data.customer_notes ?? null,
         internal_notes: parsed.data.internal_notes ?? null,
         status: "draft",
         template_id: template?.id ?? null,

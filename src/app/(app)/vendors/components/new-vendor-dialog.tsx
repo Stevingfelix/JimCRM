@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -53,7 +52,11 @@ export function NewVendorDialog() {
         if (!o) reset();
       }}
     >
-      <DialogTrigger render={<Button size="sm" />}>+ New vendor</DialogTrigger>
+      <DialogTrigger
+        render={<Button className="h-10 rounded-full px-5" />}
+      >
+        + New vendor
+      </DialogTrigger>
       <DialogContent>
         <form onSubmit={onSubmit}>
           <DialogHeader>
@@ -81,11 +84,12 @@ export function NewVendorDialog() {
             </div>
           </div>
           <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>
-              Cancel
-            </DialogClose>
-            <Button type="submit" disabled={pending || !name.trim()}>
-              {pending ? "Creating…" : "Create"}
+            <Button
+              type="submit"
+              disabled={pending || !name.trim()}
+              className="h-11 rounded-full w-full text-sm"
+            >
+              {pending ? "Creating…" : "Save vendor"}
             </Button>
           </DialogFooter>
         </form>

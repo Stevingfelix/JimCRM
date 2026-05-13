@@ -21,14 +21,37 @@ const NAV_ITEMS = [
   { href: "/vendors", label: "Vendors", Icon: Truck },
 ];
 
-export function Sidebar({ reviewCount = 0 }: { reviewCount?: number }) {
+type Props = {
+  reviewCount?: number;
+  user: {
+    email: string | null;
+    label: string;
+    role: string;
+  };
+};
+
+function initialsFromEmail(email: string | null, fallback: string): string {
+  if (email) {
+    const local = email.split("@")[0] ?? "";
+    const parts = local.split(/[.\-_]+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return (local.slice(0, 2) || fallback.slice(0, 1)).toUpperCase();
+  }
+  return fallback.slice(0, 1).toUpperCase();
+}
+
+export function Sidebar({ reviewCount = 0, user }: Props) {
   const pathname = usePathname();
+  const initials = initialsFromEmail(user.email, user.label);
+  const displayName = user.email ? user.email.split("@")[0] : user.label;
 
   return (
     <aside className="w-60 shrink-0 border-r bg-card flex flex-col">
       <div className="px-5 py-5 border-b">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="size-7 rounded-md bg-primary text-primary-foreground grid place-items-center font-bold text-sm">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="size-8 rounded-lg bg-brand-gradient text-primary-foreground grid place-items-center font-bold text-sm shadow-sm">
             C
           </div>
           <span className="font-semibold tracking-tight">CAP Quoting</span>
@@ -48,7 +71,7 @@ export function Sidebar({ reviewCount = 0 }: { reviewCount?: number }) {
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
                 active
-                  ? "bg-primary/10 text-primary font-medium"
+                  ? "bg-brand-gradient-soft text-primary font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted",
               )}
             >
@@ -59,7 +82,7 @@ export function Sidebar({ reviewCount = 0 }: { reviewCount?: number }) {
                   className={cn(
                     "inline-flex items-center justify-center rounded-full text-[10px] font-semibold px-1.5 min-w-[18px] h-[18px]",
                     active
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-brand-gradient text-primary-foreground"
                       : "bg-primary/15 text-primary",
                   )}
                 >
@@ -73,13 +96,13 @@ export function Sidebar({ reviewCount = 0 }: { reviewCount?: number }) {
 
       <div className="p-3 border-t">
         <div className="flex items-center gap-3 px-2 py-1.5">
-          <div className="size-8 rounded-full bg-primary/15 text-primary grid place-items-center font-semibold text-sm">
-            J
+          <div className="size-9 rounded-full bg-brand-gradient text-primary-foreground grid place-items-center font-semibold text-sm shadow-sm">
+            {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">Jim</div>
+            <div className="text-sm font-medium truncate">{displayName}</div>
             <div className="text-[11px] text-muted-foreground tracking-wide uppercase">
-              Admin
+              {user.role}
             </div>
           </div>
         </div>

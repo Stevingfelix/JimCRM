@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -78,7 +77,14 @@ export function LogVendorQuoteDialog({ vendorId }: { vendorId: string }) {
         if (!o) reset();
       }}
     >
-      <DialogTrigger render={<Button size="sm" variant="outline" />}>
+      <DialogTrigger
+        render={
+          <Button
+            variant="outline"
+            className="h-10 rounded-full px-5"
+          />
+        }
+      >
         + Log vendor quote
       </DialogTrigger>
       <DialogContent>
@@ -157,11 +163,12 @@ export function LogVendorQuoteDialog({ vendorId }: { vendorId: string }) {
             </div>
           </div>
           <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>
-              Cancel
-            </DialogClose>
-            <Button type="submit" disabled={pending || !partId || !unitPrice}>
-              {pending ? "Saving…" : "Log quote"}
+            <Button
+              type="submit"
+              disabled={pending || !partId || !unitPrice}
+              className="h-11 rounded-full w-full text-sm"
+            >
+              {pending ? "Saving…" : "Save vendor quote"}
             </Button>
           </DialogFooter>
         </form>
