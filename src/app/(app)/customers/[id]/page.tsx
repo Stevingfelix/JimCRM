@@ -44,7 +44,10 @@ export default async function CustomerDetailPage({
             {detail.customer.name}
           </span>
         </div>
-        <NewQuoteDialog customerName={detail.customer.name} />
+        <NewQuoteDialog
+          customerId={detail.customer.id}
+          customerName={detail.customer.name}
+        />
       </div>
 
       <CustomerForm initial={detail.customer} />
