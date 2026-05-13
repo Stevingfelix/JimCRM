@@ -175,6 +175,51 @@ export type Database = {
           },
         ]
       }
+      gmail_credentials: {
+        Row: {
+          access_token_expires_at: string | null
+          created_at: string
+          created_by: string | null
+          email: string
+          encrypted_access_token: string | null
+          encrypted_refresh_token: string
+          id: string
+          is_active: boolean
+          last_polled_at: string | null
+          updated_at: string
+          updated_by: string | null
+          watched_label: string
+        }
+        Insert: {
+          access_token_expires_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          email: string
+          encrypted_access_token?: string | null
+          encrypted_refresh_token: string
+          id?: string
+          is_active?: boolean
+          last_polled_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          watched_label?: string
+        }
+        Update: {
+          access_token_expires_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          encrypted_access_token?: string | null
+          encrypted_refresh_token?: string
+          id?: string
+          is_active?: boolean
+          last_polled_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          watched_label?: string
+        }
+        Relationships: []
+      }
       part_aliases: {
         Row: {
           alias_pn: string

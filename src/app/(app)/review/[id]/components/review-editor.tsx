@@ -1,0 +1,349 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { PartSearchCell } from "@/app/(app)/quotes/[id]/components/part-search-cell";
+import { searchCustomersAction } from "@/app/(app)/quotes/lookups";
+import type { EnrichedLine } from "@/lib/extractors/enrich";
+import { commitReviewToQuote, rejectReview } from "../../actions";
+
+type Customer = { id: string; name: string };
+
+type LineDraft = {
+  raw_text: string;
+  part_id: string | null;
+  part_display: string;
+  description: string | null;
+  qty: string;
+  unit_price: string;
+  confidence: number;
+  reasoning: string;
+  match_source: EnrichedLine["match_source"];
+  matched_alias: string | null;
+  accepted: boolean;
+};
+
+type Props = {
+  eventId: string;
+  initialLines: EnrichedLine[];
+  initialCustomer:
+    | { customer_id: string; customer_name: string }
+    | null;
+};
+
+export function ReviewEditor({
+  eventId,
+  initialLines,
+  initialCustomer,
+}: Props) {
+  const router = useRouter();
+  const [customer, setCustomer] = useState<Customer | null>(
+    initialCustomer
+      ? { id: initialCustomer.customer_id, name: initialCustomer.customer_name }
+      : null,
+  );
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
+  const [lines, setLines] = useState<LineDraft[]>(() =>
+    initialLines.map((l) => ({
+      raw_text: l.raw_text,
+      part_id: l.matched_part?.id ?? null,
+      part_display: l.matched_part?.internal_pn ?? l.part_number_guess ?? "",
+      description: l.matched_part?.description ?? null,
+      qty: l.qty != null ? String(l.qty) : "",
+      unit_price: l.unit_price != null ? String(l.unit_price) : "",
+      confidence: l.confidence,
+      reasoning: l.reasoning,
+      match_source: l.match_source,
+      matched_alias: l.matched_alias,
+      // Default accepted only when we have a strong match AND a qty.
+      accepted:
+        l.matched_part !== null &&
+        (l.match_source === "internal_pn_exact" ||
+          l.match_source === "alias_exact") &&
+        l.qty != null,
+    })),
+  );
+  const [committing, startCommit] = useTransition();
+  const [, startReject] = useTransition();
+
+  useEffect(() => {
+    if (customer) return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const rows = await searchCustomersAction(customerQuery);
+      if (!cancelled) setCustomerResults(rows);
+    }, 150);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [customer, customerQuery]);
+
+  const onCommit = () => {
+    if (!customer) {
+      toast.error("Pick a customer first");
+      return;
+    }
+    const accepted = lines.filter((l) => l.accepted);
+    const ready = accepted.filter(
+      (l) => l.part_id && l.qty.trim() && Number(l.qty) > 0,
+    );
+    if (ready.length === 0) {
+      toast.error("Accept at least one line with a part + qty");
+      return;
+    }
+    if (ready.length !== accepted.length) {
+      toast.error(
+        `${accepted.length - ready.length} accepted line${accepted.length - ready.length === 1 ? "" : "s"} missing part or qty`,
+      );
+      return;
+    }
+    startCommit(async () => {
+      const result = await commitReviewToQuote({
+        event_id: eventId,
+        customer_id: customer.id,
+        lines: ready.map((l) => ({
+          part_id: l.part_id!,
+          qty: Number(l.qty),
+          unit_price: l.unit_price === "" ? null : Number(l.unit_price),
+        })),
+      });
+      if (!result.ok) {
+        toast.error(result.error.message);
+        return;
+      }
+      toast.success("Quote created");
+      router.push(`/quotes/${result.data.quote_id}`);
+    });
+  };
+
+  const onReject = () => {
+    if (
+      !confirm(
+        "Reject this email? It will be removed from the review queue without creating a quote.",
+      )
+    )
+      return;
+    startReject(async () => {
+      const result = await rejectReview(eventId);
+      if (!result.ok) {
+        toast.error(result.error.message);
+        return;
+      }
+      toast.success("Rejected");
+      router.push("/review");
+    });
+  };
+
+  const update = (idx: number, patch: Partial<LineDraft>) => {
+    setLines((prev) =>
+      prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)),
+    );
+  };
+
+  const acceptedCount = lines.filter((l) => l.accepted).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-md border p-3 space-y-2">
+        <div className="text-sm font-medium">Customer</div>
+        {customer ? (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm">{customer.name}</span>
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setCustomer(null)}
+            >
+              change
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Input
+              placeholder="Type to search customers…"
+              value={customerQuery}
+              onChange={(e) => setCustomerQuery(e.target.value)}
+              className="h-8"
+            />
+            {customerResults.length > 0 && (
+              <div className="rounded-md border max-h-48 overflow-auto">
+                {customerResults.map((c) => (
+                  <button
+                    type="button"
+                    key={c.id}
+                    onClick={() => setCustomer(c)}
+                    className="block w-full text-left px-3 py-1.5 text-sm hover:bg-muted"
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[44px]" />
+              <TableHead className="w-[260px]">Part</TableHead>
+              <TableHead>Extracted from</TableHead>
+              <TableHead className="w-[80px] text-right">Qty</TableHead>
+              <TableHead className="w-[110px] text-right">Unit $</TableHead>
+              <TableHead className="w-[80px] text-right">Conf.</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {lines.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="text-center text-sm text-muted-foreground py-6"
+                >
+                  No lines were extracted. Reject this email to clear it from
+                  the queue.
+                </TableCell>
+              </TableRow>
+            ) : (
+              lines.map((line, idx) => (
+                <>
+                  <TableRow
+                    key={`row-${idx}`}
+                    className={cn(line.accepted && "bg-muted/30")}
+                  >
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={line.accepted}
+                        onChange={(e) =>
+                          update(idx, { accepted: e.target.checked })
+                        }
+                        aria-label="accept line"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <PartSearchCell
+                        initialDisplay={line.part_display}
+                        onSelect={(p) =>
+                          update(idx, {
+                            part_id: p.id,
+                            part_display: p.internal_pn,
+                            description: p.description,
+                          })
+                        }
+                        onClear={() =>
+                          update(idx, {
+                            part_id: null,
+                            part_display: "",
+                            description: null,
+                          })
+                        }
+                        placeholder="Search part…"
+                      />
+                      {line.matched_alias && (
+                        <div className="text-[10px] text-muted-foreground mt-1">
+                          matched via alias “{line.matched_alias}”
+                        </div>
+                      )}
+                      {line.match_source === "internal_pn_ilike" ||
+                      line.match_source === "alias_ilike" ? (
+                        <div className="text-[10px] text-amber-700 mt-1">
+                          fuzzy match — verify before committing
+                        </div>
+                      ) : null}
+                      {line.match_source === "none" && !line.part_id && (
+                        <div className="text-[10px] text-rose-700 mt-1">
+                          no part match — pick one or reject
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground italic max-w-[360px]">
+                      “{line.raw_text}”
+                      <div className="not-italic mt-1 text-[10px]">
+                        {line.reasoning}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={line.qty}
+                        onChange={(e) => update(idx, { qty: e.target.value })}
+                        className="h-8 text-right tabular-nums"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        min="0"
+                        value={line.unit_price}
+                        onChange={(e) =>
+                          update(idx, { unit_price: e.target.value })
+                        }
+                        placeholder="optional"
+                        className="h-8 text-right tabular-nums"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs tabular-nums",
+                          line.confidence < 0.5 &&
+                            "bg-rose-50 text-rose-700 border-rose-200",
+                          line.confidence >= 0.5 &&
+                            line.confidence < 0.7 &&
+                            "bg-amber-50 text-amber-700 border-amber-200",
+                          line.confidence >= 0.7 &&
+                            "bg-emerald-50 text-emerald-700 border-emerald-200",
+                        )}
+                      >
+                        {line.confidence.toFixed(2)}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                </>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-muted-foreground">
+          {acceptedCount} of {lines.length} line{lines.length === 1 ? "" : "s"}{" "}
+          accepted
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={onReject}>
+            Reject email
+          </Button>
+          <Button onClick={onCommit} disabled={committing || acceptedCount === 0}>
+            {committing
+              ? "Creating quote…"
+              : `Create draft quote (${acceptedCount})`}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
