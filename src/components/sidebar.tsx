@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTransition } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -9,8 +10,10 @@ import {
   Package,
   Users,
   Truck,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { signOut } from "@/app/(auth)/login/actions";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", Icon: LayoutDashboard, match: "exact" as const },
@@ -25,27 +28,36 @@ type Props = {
   reviewCount?: number;
   user: {
     email: string | null;
-    label: string;
+    full_name: string | null;
     role: string;
   };
 };
 
-function initialsFromEmail(email: string | null, fallback: string): string {
-  if (email) {
-    const local = email.split("@")[0] ?? "";
+function initialsFromUser(user: Props["user"]): string {
+  if (user.full_name) {
+    const parts = user.full_name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  if (user.email) {
+    const local = user.email.split("@")[0] ?? "";
     const parts = local.split(/[.\-_]+/).filter(Boolean);
     if (parts.length >= 2) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
-    return (local.slice(0, 2) || fallback.slice(0, 1)).toUpperCase();
+    return (local.slice(0, 2) || "?").toUpperCase();
   }
-  return fallback.slice(0, 1).toUpperCase();
+  return "?";
 }
 
 export function Sidebar({ reviewCount = 0, user }: Props) {
   const pathname = usePathname();
-  const initials = initialsFromEmail(user.email, user.label);
-  const displayName = user.email ? user.email.split("@")[0] : user.label;
+  const initials = initialsFromUser(user);
+  const displayName =
+    user.full_name || (user.email ? user.email.split("@")[0] : "User");
+  const [signingOut, startSignOut] = useTransition();
 
   return (
     <aside className="w-60 shrink-0 border-r bg-card flex flex-col">
@@ -95,8 +107,8 @@ export function Sidebar({ reviewCount = 0, user }: Props) {
       </nav>
 
       <div className="p-3 border-t">
-        <div className="flex items-center gap-3 px-2 py-1.5">
-          <div className="size-9 rounded-full bg-brand-gradient text-primary-foreground grid place-items-center font-semibold text-sm shadow-sm">
+        <div className="flex items-center gap-2.5 px-2 py-1.5">
+          <div className="size-9 rounded-full bg-brand-gradient text-primary-foreground grid place-items-center font-semibold text-sm shadow-sm shrink-0">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
@@ -105,6 +117,22 @@ export function Sidebar({ reviewCount = 0, user }: Props) {
               {user.role}
             </div>
           </div>
+          <form
+            action={() => {
+              startSignOut(async () => {
+                await signOut();
+              });
+            }}
+          >
+            <button
+              type="submit"
+              disabled={signingOut}
+              aria-label="Sign out"
+              className="size-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50"
+            >
+              <LogOut className="size-4" />
+            </button>
+          </form>
         </div>
       </div>
     </aside>

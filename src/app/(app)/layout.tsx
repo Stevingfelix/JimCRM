@@ -1,6 +1,7 @@
+import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import { getActiveCredentialsPublic } from "@/lib/gmail/credentials";
+import { getCurrentUser } from "@/lib/auth";
 import { countNeedsReview } from "./review/queries";
 
 export const dynamic = "force-dynamic";
@@ -10,25 +11,21 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Best-effort lookups — degrade gracefully if env not set.
-  const [reviewCount, gmailStatus] = await Promise.all([
-    countNeedsReview().catch(() => 0),
-    getActiveCredentialsPublic().catch(() => ({
-      connected: false,
-      email: null as string | null,
-      watched_label: null,
-      last_polled_at: null,
-    })),
-  ]);
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const reviewCount = await countNeedsReview().catch(() => 0);
 
   return (
     <div className="min-h-screen bg-background flex">
       <Sidebar
         reviewCount={reviewCount}
         user={{
-          email: gmailStatus.email,
-          label: "Jim",
-          role: "Admin",
+          email: user.email,
+          full_name: user.full_name,
+          role: user.role === "admin" ? "Admin" : "User",
         }}
       />
       <main className="flex-1 min-w-0">{children}</main>
