@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
+import { NotificationBell } from "@/components/notification-bell";
 import { Toaster } from "@/components/ui/sonner";
 import { getCurrentUser } from "@/lib/auth";
 import { countNeedsReview } from "./review/queries";
+import { getNotifications } from "./notifications/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +18,14 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  const reviewCount = await countNeedsReview().catch(() => 0);
+  const [reviewCount, notifications] = await Promise.all([
+    countNeedsReview().catch(() => 0),
+    getNotifications(10).catch(() => ({
+      unread_count: 0,
+      recent: [],
+      last_seen_at: null,
+    })),
+  ]);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -28,7 +37,12 @@ export default async function AppLayout({
           role: user.role === "admin" ? "Admin" : "User",
         }}
       />
-      <main className="flex-1 min-w-0">{children}</main>
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="h-14 border-b bg-card px-6 flex items-center justify-end gap-2 shrink-0">
+          <NotificationBell initial={notifications} />
+        </header>
+        <main className="flex-1 min-w-0 overflow-auto">{children}</main>
+      </div>
       <Toaster richColors closeButton />
     </div>
   );
