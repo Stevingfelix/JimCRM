@@ -24,10 +24,10 @@ export default async function ReviewPage({
   ]);
 
   return (
-    <div className="px-6 py-6 space-y-4">
+    <div className="px-8 py-8 space-y-6 max-w-7xl">
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">Review queue</h1>
-        <p className="text-xs text-muted-foreground">
+        <h1 className="text-2xl font-semibold tracking-tight">Review queue</h1>
+        <p className="text-sm text-muted-foreground">
           {rows.length} item{rows.length === 1 ? "" : "s"} need review
         </p>
       </div>
@@ -45,7 +45,7 @@ export default async function ReviewPage({
 
       <GmailStatus status={status} />
 
-      <div className="rounded-md border">
+      <div className="rounded-xl border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>

@@ -25,11 +25,11 @@ export default async function CustomersPage({
   const { rows, total } = await listCustomers({ q: searchParams.q, page });
 
   return (
-    <div className="px-6 py-6 space-y-4">
+    <div className="px-8 py-8 space-y-6 max-w-7xl">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">Customers</h1>
-          <p className="text-xs text-muted-foreground">
+          <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
+          <p className="text-sm text-muted-foreground">
             {total.toLocaleString()} total
           </p>
         </div>
@@ -38,7 +38,7 @@ export default async function CustomersPage({
 
       <CustomersSearch />
 
-      <div className="rounded-md border">
+      <div className="rounded-xl border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
