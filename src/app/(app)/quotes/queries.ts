@@ -133,6 +133,13 @@ export type QuoteLineDetail = {
   alt_vendors: VendorRecommendation[];
 };
 
+export type QuoteAttachment = {
+  id: string;
+  drive_file_id: string;
+  name: string;
+  mime_type: string | null;
+};
+
 export type QuoteDetail = {
   quote: {
     id: string;
@@ -149,6 +156,7 @@ export type QuoteDetail = {
   };
   templates: Array<{ id: string; name: string; is_default: boolean }>;
   lines: QuoteLineDetail[];
+  attachments: QuoteAttachment[];
 };
 
 export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
@@ -180,7 +188,7 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
   };
   const q = quote as unknown as QuoteRow;
 
-  const [linesRes, templatesRes] = await Promise.all([
+  const [linesRes, templatesRes, attachmentsRes] = await Promise.all([
     supabase
       .from("quote_lines")
       .select(
@@ -192,10 +200,16 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
       .from("pdf_templates")
       .select("id, name, is_default")
       .order("name", { ascending: true }),
+    supabase
+      .from("quote_attachments")
+      .select("id, drive_file_id, name, mime_type")
+      .eq("quote_id", id)
+      .order("created_at", { ascending: true }),
   ]);
 
   if (linesRes.error) throw new Error(linesRes.error.message);
   if (templatesRes.error) throw new Error(templatesRes.error.message);
+  if (attachmentsRes.error) throw new Error(attachmentsRes.error.message);
 
   type LineRow = {
     id: string;
@@ -294,6 +308,7 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
     },
     templates: templatesRes.data ?? [],
     lines,
+    attachments: attachmentsRes.data ?? [],
   };
 }
 

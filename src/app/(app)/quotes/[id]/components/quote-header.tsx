@@ -85,9 +85,20 @@ export function QuoteHeader({ quote, templates }: Props) {
   };
 
   const onSend = () => {
-    toast.info(
-      "PDF render + email send lands on Day 6. For now, flip status to 'sent' manually if you need.",
-    );
+    // Render PDF (opens in a new tab) and flip status to sent.
+    // Email send via Gmail is deferred — gmail.send is a separate restricted
+    // scope; Jim can download the PDF and send manually for now.
+    window.open(`/api/quotes/${quote.id}/pdf`, "_blank");
+    startStatus(async () => {
+      const result = await updateQuoteStatus({ id: quote.id, status: "sent" });
+      if (!result.ok) {
+        toast.error(result.error.message);
+        return;
+      }
+      setStatus("sent");
+      toast.success("PDF generated · status → sent");
+      router.refresh();
+    });
   };
 
   const onDelete = () => {

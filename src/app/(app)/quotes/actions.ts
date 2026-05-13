@@ -296,6 +296,68 @@ export async function suggestPriceForLine(
   }
 }
 
+const AddAttachmentSchema = z.object({
+  quote_id: z.string().uuid(),
+  drive_file_id: z.string().min(1).max(200),
+  name: z.string().min(1).max(500),
+  mime_type: z.string().max(200).nullable(),
+});
+
+export async function addQuoteAttachment(
+  input: z.input<typeof AddAttachmentSchema>,
+): Promise<ActionResult<{ id: string }>> {
+  const parsed = AddAttachmentSchema.safeParse(input);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+  try {
+    const supabase = createClient();
+    const userId = await getCurrentUserId();
+    const { data, error } = await supabase
+      .from("quote_attachments")
+      .insert({
+        quote_id: parsed.data.quote_id,
+        drive_file_id: parsed.data.drive_file_id,
+        name: parsed.data.name,
+        mime_type: parsed.data.mime_type,
+        created_by: userId,
+        updated_by: userId,
+      })
+      .select("id")
+      .single();
+    if (error) return err(error.code ?? "db_error", error.message);
+    revalidatePath(`/quotes/${parsed.data.quote_id}`);
+    return ok({ id: data.id });
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
+export async function deleteQuoteAttachment({
+  id,
+  quote_id,
+}: {
+  id: string;
+  quote_id: string;
+}): Promise<ActionResult<void>> {
+  if (
+    !z.string().uuid().safeParse(id).success ||
+    !z.string().uuid().safeParse(quote_id).success
+  ) {
+    return err("validation", "Invalid id");
+  }
+  try {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("quote_attachments")
+      .delete()
+      .eq("id", id);
+    if (error) return err(error.code ?? "db_error", error.message);
+    revalidatePath(`/quotes/${quote_id}`);
+    return ok(undefined);
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
 export async function softDeleteQuote(id: string): Promise<ActionResult<void>> {
   if (!z.string().uuid().safeParse(id).success) {
     return err("validation", "Invalid id");

@@ -4,7 +4,7 @@ import { getQuoteDetail } from "../queries";
 import { QuoteHeader } from "./components/quote-header";
 import { LinesEditor } from "./components/lines-editor";
 import { NotesSection } from "./components/notes-section";
-import { AttachmentsStub } from "./components/attachments-stub";
+import { AttachmentsSection } from "./components/attachments-section";
 
 export default async function QuoteDetailPage({
   params,
@@ -44,7 +44,10 @@ export default async function QuoteDetailPage({
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold tracking-tight">Attachments</h2>
-        <AttachmentsStub />
+        <AttachmentsSection
+          quoteId={detail.quote.id}
+          attachments={detail.attachments}
+        />
       </section>
     </div>
   );
