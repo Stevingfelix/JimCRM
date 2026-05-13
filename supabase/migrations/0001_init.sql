@@ -3,6 +3,7 @@
 -- Tighten RLS in a later migration when multi-tenant becomes a real requirement.
 
 create extension if not exists "pgcrypto";
+create extension if not exists "pg_trgm";
 
 -- =========================================================================
 -- Audit trigger: stamp updated_at on every UPDATE.
@@ -34,7 +35,6 @@ create table public.parts (
 );
 
 create index parts_internal_pn_trgm on public.parts using gin (internal_pn gin_trgm_ops);
-create extension if not exists pg_trgm;
 
 create table public.part_aliases (
   id uuid primary key default gen_random_uuid(),

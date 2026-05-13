@@ -193,7 +193,9 @@ export async function getPartDetail(id: string): Promise<PartDetail | null> {
       description: part.description,
       internal_notes: part.internal_notes,
     },
-    aliases: aliasesRes.data ?? [],
+    // source_type is TEXT in DB; narrowed here to the app's allowed values.
+    // The form-level Zod schema enforces this on writes.
+    aliases: (aliasesRes.data ?? []) as PartDetail["aliases"],
     history,
   };
 }
