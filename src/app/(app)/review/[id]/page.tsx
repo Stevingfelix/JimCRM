@@ -88,8 +88,14 @@ export default async function ReviewDetailPage({
         <h2 className="text-sm font-semibold tracking-tight">Extracted lines</h2>
         <ReviewEditor
           eventId={detail.id}
+          defaultMode={
+            detail.extraction?.source_type === "vendor_quote_reply"
+              ? "vendor"
+              : "customer"
+          }
           initialLines={detail.enriched}
           initialCustomer={detail.matched_customer}
+          vendorHint={detail.extraction?.customer_or_vendor_hint ?? null}
         />
       </section>
 

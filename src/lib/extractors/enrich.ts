@@ -18,6 +18,7 @@ export type EnrichedLine = ExtractedLine & {
   matched_part: MatchedPart;
   match_source: MatchSource;
   matched_alias: string | null;
+  extraction_source?: string; // "email_body" | "pdf:<filename>" | "excel:<filename>"
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

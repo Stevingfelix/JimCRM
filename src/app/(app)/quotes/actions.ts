@@ -238,6 +238,64 @@ export async function deleteLine({
   }
 }
 
+const SuggestPriceSchema = z.object({
+  line_id: z.string().uuid(),
+  quote_id: z.string().uuid(),
+});
+
+export async function suggestPriceForLine(
+  input: z.input<typeof SuggestPriceSchema>,
+): Promise<
+  ActionResult<{
+    suggested_price: number;
+    confidence: number;
+    reasoning: string;
+  }>
+> {
+  const parsed = SuggestPriceSchema.safeParse(input);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+  try {
+    const supabase = createClient();
+    const { suggestPrice } = await import("@/lib/pricing/suggest");
+    const userId = await getCurrentUserId();
+
+    const { data: line, error: lineErr } = await supabase
+      .from("quote_lines")
+      .select("part_id, qty, quotes!inner(customer_id)")
+      .eq("id", parsed.data.line_id)
+      .maybeSingle();
+    if (lineErr) return err(lineErr.code ?? "db_error", lineErr.message);
+    if (!line) return err("not_found", "Quote line not found");
+
+    type Row = { part_id: string | null; qty: number; quotes: { customer_id: string } };
+    const row = line as unknown as Row;
+    if (!row.part_id) {
+      return err("validation", "Line has no part — pick one before suggesting a price");
+    }
+
+    const suggestion = await suggestPrice({
+      part_id: row.part_id,
+      qty: row.qty,
+      customer_id: row.quotes.customer_id,
+    });
+
+    const { error: updErr } = await supabase
+      .from("quote_lines")
+      .update({
+        ai_suggested_price: suggestion.suggested_price,
+        ai_reasoning: suggestion.reasoning,
+        updated_by: userId,
+      })
+      .eq("id", parsed.data.line_id);
+    if (updErr) return err(updErr.code ?? "db_error", updErr.message);
+
+    revalidatePath(`/quotes/${parsed.data.quote_id}`);
+    return ok(suggestion);
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
 export async function softDeleteQuote(id: string): Promise<ActionResult<void>> {
   if (!z.string().uuid().safeParse(id).success) {
     return err("validation", "Invalid id");

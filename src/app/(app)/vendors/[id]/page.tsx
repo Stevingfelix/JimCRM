@@ -12,6 +12,7 @@ import {
 import { getVendorDetail } from "../queries";
 import { VendorForm } from "./components/vendor-form";
 import { VendorContactsEditor } from "./components/vendor-contacts-editor";
+import { LogVendorQuoteDialog } from "./components/log-vendor-quote-dialog";
 
 function formatDate(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
@@ -56,14 +57,17 @@ export default async function VendorDetailPage({
       <Separator />
 
       <section className="space-y-2">
-        <div>
-          <h2 className="text-sm font-semibold tracking-tight">
-            Recent vendor quotes (cost basis)
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Last 15 entries. Vendor pricing feeds the AI price suggester on
-            customer quotes.
-          </p>
+        <div className="flex items-end justify-between">
+          <div>
+            <h2 className="text-sm font-semibold tracking-tight">
+              Recent vendor quotes (cost basis)
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Last 15 entries. Vendor pricing feeds the AI price suggester on
+              customer quotes.
+            </p>
+          </div>
+          <LogVendorQuoteDialog vendorId={detail.vendor.id} />
         </div>
         <div className="rounded-md border">
           <Table>

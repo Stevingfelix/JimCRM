@@ -6,16 +6,24 @@ import {
   type ParsedMessage,
 } from "./client";
 import {
+  attachmentKind,
+  fetchAttachmentBytes,
+  type AttachmentRef,
+} from "./attachments";
+import {
   getActiveCredentials,
   getValidAccessToken,
 } from "./credentials";
 import { extractEmailBody } from "@/lib/extractors/email-body";
+import { extractPdfAttachment } from "@/lib/extractors/pdf-attachment";
+import { extractExcelAttachment } from "@/lib/extractors/excel-attachment";
 import {
   enrichLine,
   findCustomerByEmail,
   lineNeedsReview,
   type EnrichedLine,
 } from "@/lib/extractors/enrich";
+import type { ExtractionResult } from "@/lib/extractors/_pattern";
 
 export type PollResult = {
   status: "ok" | "not_connected" | "label_not_found";
@@ -46,7 +54,6 @@ export async function pollGmail(): Promise<PollResult> {
 
   const candidateIds = await listMessageIds(accessToken, labelId, { maxResults: 25 });
 
-  // Filter to new ones via gmail_msg_id uniqueness in email_events.
   let unseenIds = candidateIds;
   if (candidateIds.length > 0) {
     const { data: existing } = await supabase
@@ -63,12 +70,11 @@ export async function pollGmail(): Promise<PollResult> {
   for (const msgId of unseenIds) {
     try {
       const msg = await getMessage(accessToken, msgId);
-      await processMessage(msg, creds.watched_label);
+      await processMessage(msg, creds.watched_label, accessToken);
       processed++;
     } catch (e) {
       errors++;
       const message = e instanceof Error ? e.message : "Unknown error";
-      // Best-effort: record the failure as an email_event so it's visible in review.
       await supabase.from("email_events").insert({
         gmail_msg_id: msgId,
         label: creds.watched_label,
@@ -96,10 +102,10 @@ export async function pollGmail(): Promise<PollResult> {
 async function processMessage(
   msg: ParsedMessage,
   label: string,
+  accessToken: string,
 ): Promise<void> {
   const supabase = createAdminClient();
 
-  // Insert in pending state first so we have a row to update on failure paths.
   const { data: inserted, error: insertErr } = await supabase
     .from("email_events")
     .insert({
@@ -112,45 +118,84 @@ async function processMessage(
         sender: { email: msg.from_email, name: msg.from_name },
         subject: msg.subject,
         body_preview: msg.body_text.slice(0, 500),
+        attachments_meta: msg.attachments.map((a) => ({
+          filename: a.filename,
+          mime_type: a.mime_type,
+          size: a.size,
+          kind: attachmentKind({ filename: a.filename, mimeType: a.mime_type }),
+        })),
       },
     })
     .select("id")
     .single();
   if (insertErr) {
-    // Likely a duplicate from a concurrent poll — safe to skip.
-    if (insertErr.code === "23505") return;
+    if (insertErr.code === "23505") return; // duplicate from concurrent poll
     throw new Error(insertErr.message);
   }
   const eventId = inserted.id;
 
-  // Cheap pre-filter: if the body is empty or trivially short, skip the LLM call.
-  if (msg.body_text.trim().length < 20) {
-    await supabase
-      .from("email_events")
-      .update({
-        parse_status: "skipped",
-        needs_review: false,
-        parsed_payload: {
-          sender: { email: msg.from_email, name: msg.from_name },
-          subject: msg.subject,
-          reason: "body_too_short",
-        },
-      })
-      .eq("id", eventId);
-    return;
+  // Run email-body extractor (cheap pre-filter for trivially short bodies).
+  let bodyExtraction: ExtractionResult | null = null;
+  let bodyError: string | null = null;
+  if (msg.body_text.trim().length >= 20) {
+    try {
+      bodyExtraction = await extractEmailBody({
+        subject: msg.subject,
+        body_text: msg.body_text,
+        from_email: msg.from_email,
+        from_name: msg.from_name,
+      });
+    } catch (e) {
+      bodyError = e instanceof Error ? e.message : "email-body extractor failed";
+    }
   }
 
-  // Extract with Claude
-  let extraction;
-  try {
-    extraction = await extractEmailBody({
-      subject: msg.subject,
-      body_text: msg.body_text,
-      from_email: msg.from_email,
-      from_name: msg.from_name,
+  // Run attachment extractors. Run sequentially to bound concurrent Anthropic
+  // calls and keep cost predictable per poll tick.
+  const attachmentExtractions: Array<{
+    filename: string;
+    kind: "pdf" | "excel";
+    extraction: ExtractionResult | null;
+    error: string | null;
+  }> = [];
+  for (const att of msg.attachments) {
+    const kind = attachmentKind({
+      filename: att.filename,
+      mimeType: att.mime_type,
     });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "extractor failed";
+    if (!kind) continue;
+    try {
+      const buffer = await fetchAttachmentBytes(
+        accessToken,
+        msg.id,
+        att.attachment_id,
+      );
+      const extraction =
+        kind === "pdf"
+          ? await extractPdfAttachment({ filename: att.filename, buffer })
+          : await extractExcelAttachment({ filename: att.filename, buffer });
+      attachmentExtractions.push({
+        filename: att.filename,
+        kind,
+        extraction,
+        error: null,
+      });
+    } catch (e) {
+      attachmentExtractions.push({
+        filename: att.filename,
+        kind,
+        extraction: null,
+        error: e instanceof Error ? e.message : "attachment extractor failed",
+      });
+    }
+  }
+
+  // If everything failed AND nothing was extracted, mark the event for review.
+  const allFailed =
+    bodyError !== null &&
+    (attachmentExtractions.length === 0 ||
+      attachmentExtractions.every((a) => a.error !== null));
+  if (allFailed) {
     await supabase
       .from("email_events")
       .update({
@@ -160,28 +205,69 @@ async function processMessage(
           sender: { email: msg.from_email, name: msg.from_name },
           subject: msg.subject,
           body_preview: msg.body_text.slice(0, 1000),
-          error: message,
+          body_error: bodyError,
+          attachments: attachmentExtractions,
         },
       })
       .eq("id", eventId);
     return;
   }
 
-  // Enrich each line with part match (and identify the customer by sender email).
-  const enriched: EnrichedLine[] = await Promise.all(
-    extraction.lines.map((l) => enrichLine(l, supabase)),
-  );
+  // Skip if body was empty AND no attachments. Mark skipped.
+  if (!bodyExtraction && attachmentExtractions.length === 0) {
+    await supabase
+      .from("email_events")
+      .update({
+        parse_status: "skipped",
+        needs_review: false,
+        parsed_payload: {
+          sender: { email: msg.from_email, name: msg.from_name },
+          subject: msg.subject,
+          reason: "body_too_short_and_no_attachments",
+        },
+      })
+      .eq("id", eventId);
+    return;
+  }
+
+  // Merge all extracted lines, tagging the source.
+  const mergedRaw: Array<{ line: import("@/lib/extractors/_pattern").ExtractedLine; source: string }> = [];
+  if (bodyExtraction) {
+    for (const l of bodyExtraction.lines) {
+      mergedRaw.push({ line: l, source: "email_body" });
+    }
+  }
+  for (const a of attachmentExtractions) {
+    if (!a.extraction) continue;
+    for (const l of a.extraction.lines) {
+      mergedRaw.push({ line: l, source: `${a.kind}:${a.filename}` });
+    }
+  }
+
+  // Enrich each line (alias lookup, customer match).
+  const enriched: EnrichedLine[] = [];
+  for (const item of mergedRaw) {
+    const e = await enrichLine(item.line, supabase);
+    e.extraction_source = item.source;
+    enriched.push(e);
+  }
 
   const matchedCustomer = msg.from_email
     ? await findCustomerByEmail(msg.from_email, supabase)
     : null;
 
-  // Needs review when any line is below threshold, no part match, only fuzzy,
-  // we couldn't identify the customer, OR source_type is "other".
+  // Effective source_type: prefer body's verdict; fall back to first
+  // attachment that produced lines.
+  const effectiveSourceType: ExtractionResult["source_type"] =
+    bodyExtraction?.source_type ??
+    attachmentExtractions.find((a) => a.extraction && a.extraction.lines.length > 0)
+      ?.extraction?.source_type ??
+    "other";
+
   const someLineSuspect = enriched.some(lineNeedsReview);
   const needsReview =
-    extraction.source_type === "other" ||
-    extraction.lines.length === 0 ||
+    effectiveSourceType === "other" ||
+    enriched.length === 0 ||
     someLineSuspect ||
     !matchedCustomer;
 
@@ -193,9 +279,17 @@ async function processMessage(
       parsed_payload: {
         sender: { email: msg.from_email, name: msg.from_name },
         subject: msg.subject,
-        body_preview: msg.body_text.slice(0, 2000),
         body_text: msg.body_text,
-        extraction,
+        extraction: {
+          source_type: effectiveSourceType,
+          customer_or_vendor_hint:
+            bodyExtraction?.customer_or_vendor_hint ??
+            attachmentExtractions.find((a) => a.extraction?.customer_or_vendor_hint)
+              ?.extraction?.customer_or_vendor_hint ??
+            null,
+          lines: mergedRaw.map((x) => x.line),
+        },
+        attachments: attachmentExtractions,
         enriched,
         matched_customer: matchedCustomer,
       },

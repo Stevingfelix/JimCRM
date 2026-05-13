@@ -145,6 +145,47 @@ export async function updateVendorContact(
   }
 }
 
+const CreateVendorQuoteSchema = z.object({
+  vendor_id: z.string().uuid(),
+  part_id: z.string().uuid(),
+  qty: z.coerce.number().min(0).max(1_000_000).nullable(),
+  unit_price: z.coerce.number().min(0).max(1_000_000),
+  lead_time_days: z.coerce.number().int().min(0).max(3650).nullable(),
+  source_note: z.string().trim().max(500).nullable(),
+});
+
+export async function createVendorQuote(
+  input: z.input<typeof CreateVendorQuoteSchema>,
+): Promise<ActionResult<{ id: string }>> {
+  const parsed = CreateVendorQuoteSchema.safeParse(input);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+  try {
+    const supabase = createClient();
+    const userId = await getCurrentUserId();
+    const { data, error } = await supabase
+      .from("vendor_quotes")
+      .insert({
+        vendor_id: parsed.data.vendor_id,
+        part_id: parsed.data.part_id,
+        qty: parsed.data.qty,
+        unit_price: parsed.data.unit_price,
+        lead_time_days: parsed.data.lead_time_days,
+        source_note: parsed.data.source_note,
+        quoted_at: new Date().toISOString(),
+        created_by: userId,
+        updated_by: userId,
+      })
+      .select("id")
+      .single();
+    if (error) return err(error.code ?? "db_error", error.message);
+    revalidatePath(`/vendors/${parsed.data.vendor_id}`);
+    revalidatePath(`/parts/${parsed.data.part_id}`);
+    return ok({ id: data.id });
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
 export async function deleteVendorContact({
   id,
   vendor_id,

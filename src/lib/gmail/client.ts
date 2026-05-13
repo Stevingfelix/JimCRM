@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { listAttachmentRefs, type AttachmentRef } from "./attachments";
 
 export type GmailHeader = { name?: string | null; value?: string | null };
 
@@ -11,6 +12,7 @@ export type ParsedMessage = {
   to: string | null;
   subject: string | null;
   body_text: string;
+  attachments: AttachmentRef[];
 };
 
 function gmail(accessToken: string) {
@@ -73,6 +75,7 @@ export async function getMessage(
     to: headerVal("To"),
     subject: headerVal("Subject"),
     body_text: extractBodyText(m.payload),
+    attachments: listAttachmentRefs(m.payload),
   };
 }
 

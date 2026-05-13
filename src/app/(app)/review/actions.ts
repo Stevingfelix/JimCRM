@@ -91,6 +91,70 @@ export async function commitReviewToQuoteAndRedirect(
   return result;
 }
 
+const AcceptedVendorLineSchema = z.object({
+  part_id: z.string().uuid(),
+  qty: z.coerce.number().min(0).nullable(),
+  unit_price: z.coerce.number().min(0),
+  lead_time_days: z.coerce.number().int().min(0).nullable(),
+});
+
+const CommitToVendorQuotesSchema = z.object({
+  event_id: z.string().uuid(),
+  vendor_id: z.string().uuid(),
+  lines: z
+    .array(AcceptedVendorLineSchema)
+    .min(1, "Pick at least one line to log"),
+});
+
+export async function commitReviewToVendorQuotes(
+  input: z.input<typeof CommitToVendorQuotesSchema>,
+): Promise<ActionResult<{ inserted: number; vendor_id: string }>> {
+  const parsed = CommitToVendorQuotesSchema.safeParse(input);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+  try {
+    const supabase = createAdminClient();
+    const userId = await getCurrentUserId();
+
+    const now = new Date().toISOString();
+    const payload = parsed.data.lines.map((l) => ({
+      vendor_id: parsed.data.vendor_id,
+      part_id: l.part_id,
+      qty: l.qty,
+      unit_price: l.unit_price,
+      lead_time_days: l.lead_time_days,
+      quoted_at: now,
+      source_message_id: parsed.data.event_id,
+      source_note: "Auto-logged from email review",
+      created_by: userId,
+      updated_by: userId,
+    }));
+
+    const { data: inserted, error: vqErr } = await supabase
+      .from("vendor_quotes")
+      .insert(payload)
+      .select("id");
+    if (vqErr) return err(vqErr.code ?? "db_error", vqErr.message);
+
+    await supabase
+      .from("email_events")
+      .update({
+        needs_review: false,
+        linked_vendor_quote_ids: (inserted ?? []).map((r) => r.id),
+        updated_by: userId,
+      })
+      .eq("id", parsed.data.event_id);
+
+    revalidatePath("/review");
+    revalidatePath(`/vendors/${parsed.data.vendor_id}`);
+    return ok({
+      inserted: inserted?.length ?? 0,
+      vendor_id: parsed.data.vendor_id,
+    });
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
 export async function rejectReview(
   eventId: string,
 ): Promise<ActionResult<void>> {

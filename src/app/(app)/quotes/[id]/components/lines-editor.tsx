@@ -21,7 +21,12 @@ import type {
   QuoteLineDetail,
   VendorRecommendation,
 } from "../../queries";
-import { addLine, deleteLine, updateLine } from "../../actions";
+import {
+  addLine,
+  deleteLine,
+  suggestPriceForLine,
+  updateLine,
+} from "../../actions";
 import { PartSearchCell } from "./part-search-cell";
 import { LineHistoryPopover } from "./line-history-popover";
 
@@ -102,6 +107,7 @@ function LineRow({
     initial.line_notes_customer ?? "",
   );
   const [pending, startTransition] = useTransition();
+  const [suggesting, startSuggest] = useTransition();
 
   const numericPrice = unitPrice === "" ? null : Number(unitPrice);
   const numericQty = qty === "" ? 0 : Number(qty);
@@ -202,14 +208,53 @@ function LineRow({
             onBlur={persist}
             className="h-8 text-right tabular-nums"
           />
-          {aiSuggest != null && (
-            <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
-              💡 AI suggests {formatMoney(aiSuggest)}
-              {initial.ai_reasoning && (
-                <span title={initial.ai_reasoning}> ⓘ</span>
-              )}
-            </div>
-          )}
+          <div className="mt-1 flex items-center justify-end gap-2 text-[11px]">
+            {aiSuggest != null && (
+              <span className="text-muted-foreground tabular-nums">
+                💡 {formatMoney(aiSuggest)}
+                {initial.ai_reasoning && (
+                  <span title={initial.ai_reasoning}> ⓘ</span>
+                )}
+                {(unitPrice === "" ||
+                  (aiSuggest !== Number(unitPrice) && !Number.isNaN(aiSuggest))) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUnitPrice(String(aiSuggest));
+                      setTimeout(persist, 0);
+                    }}
+                    className="ml-1 underline text-foreground/70 hover:text-foreground"
+                  >
+                    use
+                  </button>
+                )}
+              </span>
+            )}
+            {partId && (
+              <button
+                type="button"
+                onClick={() => {
+                  startSuggest(async () => {
+                    const result = await suggestPriceForLine({
+                      line_id: initial.id,
+                      quote_id: quoteId,
+                    });
+                    if (!result.ok) toast.error(result.error.message);
+                    else {
+                      toast.success(
+                        `Suggested ${formatMoney(result.data.suggested_price)} · ${(result.data.confidence * 100).toFixed(0)}%`,
+                      );
+                      router.refresh();
+                    }
+                  });
+                }}
+                disabled={suggesting}
+                className="text-muted-foreground hover:text-foreground underline"
+              >
+                {suggesting ? "…" : aiSuggest != null ? "re-suggest" : "💡 suggest"}
+              </button>
+            )}
+          </div>
         </TableCell>
         <TableCell className="text-right tabular-nums text-sm py-2">
           {lineTotal != null ? formatMoney(lineTotal) : "—"}
