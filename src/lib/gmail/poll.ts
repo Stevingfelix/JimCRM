@@ -5,11 +5,7 @@ import {
   listMessageIds,
   type ParsedMessage,
 } from "./client";
-import {
-  attachmentKind,
-  fetchAttachmentBytes,
-  type AttachmentRef,
-} from "./attachments";
+import { attachmentKind, fetchAttachmentBytes } from "./attachments";
 import {
   getActiveCredentials,
   getValidAccessToken,

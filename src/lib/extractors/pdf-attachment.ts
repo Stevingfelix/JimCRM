@@ -1,8 +1,11 @@
-import * as pdfParseLib from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 
-const pdfParse: (data: Buffer) => Promise<{ text: string }> =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (pdfParseLib as any).default ?? (pdfParseLib as any);
+async function pdfParse(data: Buffer): Promise<{ text: string }> {
+  // pdf-parse v2 API: new PDFParse({ data }).getText()
+  const parser = new PDFParse({ data });
+  const result = await parser.getText();
+  return { text: result.text };
+}
 import { getAnthropic, MODELS } from "@/lib/anthropic";
 import {
   ExtractionResultSchema,

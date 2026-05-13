@@ -2,6 +2,11 @@ import { TopNav } from "@/components/top-nav";
 import { Toaster } from "@/components/ui/sonner";
 import { countNeedsReview } from "./review/queries";
 
+// All authenticated routes are data-driven and must hit the DB on every request.
+// (App relies on env vars at runtime; SSG would prerender at build time before
+// envs are available.)
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({
   children,
 }: {
