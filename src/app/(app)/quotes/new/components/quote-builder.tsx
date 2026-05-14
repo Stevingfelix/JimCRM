@@ -12,8 +12,9 @@ import {
   UserPlus,
   X,
   Search,
+  Pencil,
+  FileEdit,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -168,8 +169,10 @@ export function QuoteBuilder({
     }
   }
 
-  function handleSave(e: React.FormEvent) {
-    e.preventDefault();
+  // mode controls where to go after save:
+  //   "draft"    → back to the quotes list (keep working later)
+  //   "finalize" → open the detail page to finish the quote
+  function handleSave(mode: "draft" | "finalize") {
     if (!customer) {
       toast.error("Pick a customer first");
       return;
@@ -194,13 +197,17 @@ export function QuoteBuilder({
         toast.error(res.error.message);
         return;
       }
-      toast.success("Quote created");
-      // Native View Transition for a smooth shrink-into-list effect when the
-      // browser supports it; falls back to a normal navigation otherwise.
+      toast.success(
+        mode === "draft" ? "Saved as draft" : "Quote created",
+      );
+      // Native View Transition for a smooth fade when the browser supports
+      // it; falls back to a normal navigation otherwise.
       const w = window as unknown as {
         startViewTransition?: (cb: () => void) => unknown;
       };
-      const navigate = () => router.push(`/quotes/${res.data.id}`);
+      const target =
+        mode === "draft" ? "/quotes" : `/quotes/${res.data.id}`;
+      const navigate = () => router.push(target);
       if (typeof w.startViewTransition === "function") {
         w.startViewTransition(navigate);
       } else {
@@ -224,7 +231,15 @@ export function QuoteBuilder({
         </Link>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <form
+        onSubmit={(e) => {
+          // Enter inside an input shouldn't submit anything destructive;
+          // explicit footer buttons drive both save flows.
+          e.preventDefault();
+          handleSave("finalize");
+        }}
+        className="space-y-6"
+      >
         <section className="rounded-xl border bg-card p-6 space-y-5">
           {/* Title + AI triggers */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -296,9 +311,11 @@ export function QuoteBuilder({
           </div>
         </section>
 
-        {/* LINE ITEMS */}
-        <section className="rounded-xl border bg-card overflow-hidden">
-          <div className="grid grid-cols-[28px_1fr_90px_120px_110px_36px] gap-2 px-4 py-2.5 border-b text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">
+        {/* LINE ITEMS — overflow stays visible so the part-search popover
+            can extend below row boundaries. Header + footer round their own
+            corners to preserve the card look. */}
+        <section className="rounded-xl border bg-card">
+          <div className="grid grid-cols-[28px_1fr_90px_120px_110px_36px] gap-2 px-4 py-2.5 border-b text-[10px] font-semibold tracking-wider uppercase text-muted-foreground rounded-t-xl">
             <span />
             <span>Item description</span>
             <span className="text-right">Qty</span>
@@ -321,7 +338,7 @@ export function QuoteBuilder({
               />
             ))}
           </ul>
-          <div className="px-4 py-3 border-t bg-muted/20">
+          <div className="px-4 py-3 border-t bg-muted/20 rounded-b-xl">
             <button
               type="button"
               onClick={addLine}
@@ -384,21 +401,34 @@ export function QuoteBuilder({
           </aside>
         </div>
 
-        {/* FOOTER ACTIONS */}
-        <div className="flex items-center justify-end gap-2 pt-2 pb-8">
+        {/* FOOTER ACTIONS — three buttons matching the reference:
+            Discard (back to list) / Save as Draft (save + list) /
+            Finalize & Create (save + open the detail page). */}
+        <div className="border-t pt-5 pb-8 flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-2">
           <Link
             href="/quotes"
-            className="inline-flex items-center h-10 rounded-full border bg-background px-5 text-sm hover:bg-muted transition-colors"
+            className="inline-flex items-center justify-center h-10 rounded-full border bg-background px-5 text-sm hover:bg-muted transition-colors"
           >
             Discard
           </Link>
-          <Button
-            type="submit"
+          <button
+            type="button"
+            onClick={() => handleSave("draft")}
             disabled={pending || !customer}
-            className="h-10 rounded-full px-6"
+            className="inline-flex items-center justify-center gap-1.5 h-10 rounded-full bg-brand-gradient-soft text-primary px-5 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {pending ? "Creating…" : "Create quote"}
-          </Button>
+            <Pencil className="size-4" />
+            {pending ? "Saving…" : "Save as Draft"}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSave("finalize")}
+            disabled={pending || !customer}
+            className="inline-flex items-center justify-center gap-1.5 h-10 rounded-full bg-brand-gradient text-primary-foreground px-6 text-sm font-medium shadow-sm hover:brightness-105 transition-all disabled:opacity-50"
+          >
+            <FileEdit className="size-4" />
+            {pending ? "Creating…" : "Finalize & Create"}
+          </button>
         </div>
       </form>
     </div>
@@ -604,7 +634,7 @@ function PartCell({
         />
       )}
       {open && !line.part_id && (
-        <div className="absolute z-10 left-0 right-0 mt-1 rounded-lg border bg-card shadow-lg overflow-hidden">
+        <div className="absolute z-30 left-0 right-0 mt-1 rounded-lg border bg-card shadow-xl overflow-hidden">
           <div className="px-3 py-2 border-b flex items-center gap-2">
             <Search className="size-3.5 text-muted-foreground shrink-0" />
             <Input
@@ -740,7 +770,7 @@ function CustomerPicker({
           />
         )}
         {open && !value && (
-          <div className="absolute z-10 left-0 right-0 mt-1 rounded-lg border bg-card shadow-lg max-h-56 overflow-auto">
+          <div className="absolute z-30 left-0 right-0 mt-1 rounded-lg border bg-card shadow-xl max-h-56 overflow-auto">
             {results.length > 0 ? (
               <ul>
                 {results.map((c) => (

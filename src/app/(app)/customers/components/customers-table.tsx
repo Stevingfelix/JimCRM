@@ -187,21 +187,17 @@ function RowMenu({
   row: CustomerListRow;
   onDelete: () => void;
 }) {
+  const router = useRouter();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Actions for ${row.name}`}
-          />
-        }
+        aria-label={`Actions for ${row.name}`}
+        className="size-8 rounded-md grid place-items-center text-muted-foreground border bg-background hover:bg-muted hover:text-foreground transition-colors data-[popup-open]:bg-muted"
       >
         <MoreHorizontal className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[180px]">
-        <DropdownMenuItem render={<Link href={`/customers/${row.id}`} />}>
+        <DropdownMenuItem onClick={() => router.push(`/customers/${row.id}`)}>
           <Pencil className="size-4 mr-2" />
           Edit customer
         </DropdownMenuItem>
