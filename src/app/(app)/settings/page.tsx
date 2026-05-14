@@ -4,6 +4,7 @@ import {
   Users,
   FileSpreadsheet,
   UserCircle,
+  Wrench,
   ArrowRight,
 } from "lucide-react";
 
@@ -30,6 +31,13 @@ const SECTIONS = [
     blurb:
       "Invite teammates by email. Admins manage settings; users can quote and review.",
     Icon: Users,
+  },
+  {
+    href: "/settings/part-rules",
+    title: "Part number rules",
+    blurb:
+      "Families, sizes, threads, and attributes that drive CAP's internal part-number schema. The AI extractor reads these.",
+    Icon: Wrench,
   },
   {
     href: "/settings/exports",

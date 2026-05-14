@@ -3,10 +3,15 @@ import { getAnthropic, MODELS } from "@/lib/anthropic";
 import { retry } from "@/lib/retry";
 import { trackLlmCall } from "@/lib/llm-telemetry";
 import {
+  getPartNamingReference,
+  renderReferenceForPrompt,
+} from "@/lib/part-naming";
+import {
   ExtractionResultSchema,
   type ExtractionResult,
 } from "./_pattern";
 import {
+  CAP_PN_RULES,
   EXCEL_ADDENDUM,
   EXTRACTION_TOOL,
   SHARED_EXTRACTION_BASE,
@@ -49,6 +54,9 @@ export async function extractExcelAttachment(input: {
     return empty;
   }
 
+  const reference = await getPartNamingReference();
+  const referenceText = renderReferenceForPrompt(reference);
+
   const client = getAnthropic();
   const response = await trackLlmCall(
     "excel_attachment",
@@ -64,12 +72,12 @@ export async function extractExcelAttachment(input: {
           system: [
             {
               type: "text",
-              text: SHARED_EXTRACTION_BASE,
+              text: `${SHARED_EXTRACTION_BASE}\n\n${CAP_PN_RULES}\n\n${EXCEL_ADDENDUM}`,
               cache_control: { type: "ephemeral" },
             },
             {
               type: "text",
-              text: EXCEL_ADDENDUM,
+              text: referenceText,
               cache_control: { type: "ephemeral" },
             },
           ],

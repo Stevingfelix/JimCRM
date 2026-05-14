@@ -13,6 +13,16 @@ const MAX_REASONABLE_PRICE = 1_000_000;
 const PN_LOOKS_LIKE_DATE = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/;
 const PN_LOOKS_LIKE_PHONE = /^\+?\d{3}[\.\-\s]?\d{3}[\.\-\s]?\d{4}$/;
 
+type CapPnComponents = {
+  family: string | null;
+  size_code: string | null;
+  thread: string | null;
+  length_code: string | null;
+  attribute_code: string | null;
+  missing_fields: string[];
+  suggested_pn: string | null;
+} | null;
+
 function sanitizeLine(line: {
   raw_text: string;
   part_number_guess: string | null;
@@ -20,6 +30,7 @@ function sanitizeLine(line: {
   unit_price: number | null;
   confidence: number;
   reasoning: string;
+  cap_pn_components?: CapPnComponents;
 }) {
   const warnings: string[] = [];
 
@@ -65,7 +76,22 @@ function sanitizeLine(line: {
     }
   }
 
-  // Floor confidence to ensure flagged lines route to review queue (<0.7).
+  // Sanity-check the composed CAP PN. If the model returned a suggested_pn
+  // but also declared missing_fields, the suggestion is suspect — surface
+  // that and clear it. Don't fight the model otherwise; it has the rules.
+  let components = line.cap_pn_components ?? null;
+  if (components) {
+    if (
+      components.suggested_pn &&
+      components.missing_fields &&
+      components.missing_fields.length > 0
+    ) {
+      warnings.push("cap_pn suggestion conflicts with missing_fields");
+      components = { ...components, suggested_pn: null };
+    }
+  }
+
+  // Floor confidence to route flagged lines through the review queue (<0.7).
   const confidence =
     warnings.length > 0 ? Math.min(line.confidence, 0.5) : line.confidence;
 
@@ -79,8 +105,22 @@ function sanitizeLine(line: {
       warnings.length > 0
         ? `${line.reasoning} [⚠ ${warnings.join(", ")}]`
         : line.reasoning,
+    cap_pn_components: components,
   };
 }
+
+const CapPnComponentsSchema = z
+  .object({
+    family: z.string().nullable(),
+    size_code: z.string().nullable(),
+    thread: z.string().nullable(),
+    length_code: z.string().nullable(),
+    attribute_code: z.string().nullable(),
+    missing_fields: z.array(z.string()).default([]),
+    suggested_pn: z.string().nullable(),
+  })
+  .nullable()
+  .optional();
 
 export const ExtractedLineSchema = z
   .object({
@@ -90,6 +130,7 @@ export const ExtractedLineSchema = z
     unit_price: z.number().nullable(),
     confidence: z.number().min(0).max(1),
     reasoning: z.string(),
+    cap_pn_components: CapPnComponentsSchema,
   })
   .transform(sanitizeLine);
 

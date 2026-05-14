@@ -201,6 +201,13 @@ export type Database = {
             foreignKeyName: "customer_contacts_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_quote_stats"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "customer_contacts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -497,6 +504,156 @@ export type Database = {
           },
         ]
       }
+      part_naming_attributes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          display_order: number
+          id: string
+          kind: string
+          label: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          id?: string
+          kind?: string
+          label: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          id?: string
+          kind?: string
+          label?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      part_naming_families: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          display_order: number
+          id: string
+          name: string
+          notes: string | null
+          requires_length: boolean
+          requires_thread: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          id?: string
+          name: string
+          notes?: string | null
+          requires_length?: boolean
+          requires_thread?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          id?: string
+          name?: string
+          notes?: string | null
+          requires_length?: boolean
+          requires_thread?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      part_naming_sizes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          diameter_inches: number | null
+          display_order: number
+          id: string
+          label: string
+          system: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          diameter_inches?: number | null
+          display_order?: number
+          id?: string
+          label: string
+          system: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          diameter_inches?: number | null
+          display_order?: number
+          id?: string
+          label?: string
+          system?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      part_naming_threads: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          display_order: number
+          id: string
+          label: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          id?: string
+          label: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          id?: string
+          label?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       parts: {
         Row: {
           created_at: string
@@ -601,6 +758,13 @@ export type Database = {
           suggested_price?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "price_suggestion_cache_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_quote_stats"
+            referencedColumns: ["customer_id"]
+          },
           {
             foreignKeyName: "price_suggestion_cache_customer_id_fkey"
             columns: ["customer_id"]
@@ -827,6 +991,13 @@ export type Database = {
           validity_date?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "quotes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_quote_stats"
+            referencedColumns: ["customer_id"]
+          },
           {
             foreignKeyName: "quotes_customer_id_fkey"
             columns: ["customer_id"]
@@ -1096,7 +1267,16 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      customer_quote_stats: {
+        Row: {
+          customer_id: string | null
+          last_quote_at: string | null
+          quote_count: number | null
+          total_quoted: number | null
+          total_won: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       gen_quote_public_token: { Args: never; Returns: string }

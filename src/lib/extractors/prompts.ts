@@ -2,7 +2,7 @@
 // attachment cache entry (see attachment-cache.ts) — bump whenever the
 // system text or extraction tool schema is changed in a way that should
 // produce different output.
-export const PROMPT_VERSION = "v1-2026-05-14";
+export const PROMPT_VERSION = "v2-2026-05-14-cappn";
 
 // Common rules for all three extractors (email body, PDF, Excel). This
 // block is marked cache_control so it amortizes across every extractor
@@ -18,6 +18,16 @@ Universal rules:
 - source_type: "customer_quote_request" (asking us to quote), "vendor_quote_reply" (offering us pricing), or "other" (non-quote, return lines: []).
 - customer_or_vendor_hint: free-text company name from sender/header if visible.
 - NEVER invent part numbers absent from the source. If a reference is vague ("those screws we had last time"), set part_number_guess=null and confidence low.`;
+
+// CAP part-number composition rules. Pairs with the rendered reference
+// data (families/sizes/threads/attributes) injected at call time.
+export const CAP_PN_RULES = `CAP-PN COMPOSITION — for each customer_quote_request line that looks like a standard commercial fastener (bolts/screws/nuts/washers/pins/fittings from the reference below), populate cap_pn_components with the components you can pull from the source text. Rules:
+- Use ONLY codes that appear in the reference table below. If the size/thread/attribute isn't listed, set that field to null and add the missing piece name ("size", "thread", "length", "attribute", etc.) to missing_fields.
+- length_code is a 4-digit thousandths-of-inch string with leading zeros: 1/2" = "0500", 3/4" = "0750", 1" = "1000", 1.5" = "1500", 2" = "2000".
+- suggested_pn: compose ONLY if family + every field the family requires is present. Format: "PREFIX SIZE+THREAD-LENGTH+ATTRIBUTE" (no extra spaces). Example: HCS 04C-0750G8Y. If anything required is missing, set suggested_pn=null.
+- For vendor_quote_reply lines, leave cap_pn_components=null (vendor PNs are external).
+- For specials / aerospace / non-commercial items that don't fit this schema, set cap_pn_components=null and put a brief reason in reasoning.
+- Never invent codes that aren't listed. Never guess a length/thread/grade not stated in the source.`;
 
 export const EMAIL_ADDENDUM = `Input type: email body (prose, possibly with quote thread / signature).
 
@@ -69,6 +79,29 @@ export const EXTRACTION_TOOL = {
             unit_price: { type: ["number", "null"] },
             confidence: { type: "number", minimum: 0, maximum: 1 },
             reasoning: { type: "string" },
+            // CAP part-number breakdown. Null when the line doesn't fit
+            // CAP's commercial schema (specials, aerospace, ambiguous).
+            cap_pn_components: {
+              type: ["object", "null"],
+              properties: {
+                family: { type: ["string", "null"] },
+                size_code: { type: ["string", "null"] },
+                thread: { type: ["string", "null"] },
+                length_code: { type: ["string", "null"] },
+                attribute_code: { type: ["string", "null"] },
+                missing_fields: { type: "array", items: { type: "string" } },
+                suggested_pn: { type: ["string", "null"] },
+              },
+              required: [
+                "family",
+                "size_code",
+                "thread",
+                "length_code",
+                "attribute_code",
+                "missing_fields",
+                "suggested_pn",
+              ],
+            },
           },
           required: [
             "raw_text",
@@ -77,6 +110,7 @@ export const EXTRACTION_TOOL = {
             "unit_price",
             "confidence",
             "reasoning",
+            "cap_pn_components",
           ],
         },
       },

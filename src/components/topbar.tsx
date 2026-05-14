@@ -26,6 +26,7 @@ const STATIC_TITLES: Record<string, string> = {
   "/settings/profile": "Profile",
   "/settings/company": "Company info",
   "/settings/team": "Team",
+  "/settings/part-rules": "Part number rules",
   "/settings/exports": "CSV export profiles",
 };
 
