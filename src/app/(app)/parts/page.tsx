@@ -31,14 +31,11 @@ export default async function PartsPage({
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="px-8 py-8 space-y-6 max-w-7xl">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Parts</h1>
-          <p className="text-sm text-muted-foreground">
-            {total.toLocaleString()} total
-          </p>
-        </div>
+    <div className="px-8 py-8 space-y-5 max-w-7xl">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm text-muted-foreground">
+          {total.toLocaleString()} {total === 1 ? "part" : "parts"}
+        </p>
         <div className="flex items-center gap-2">
           <a
             href="/api/export/parts"

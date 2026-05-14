@@ -25,14 +25,11 @@ export default async function CustomersPage({
   const { rows, total } = await listCustomers({ q: searchParams.q, page });
 
   return (
-    <div className="px-8 py-8 space-y-6 max-w-7xl">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
-          <p className="text-sm text-muted-foreground">
-            {total.toLocaleString()} total
-          </p>
-        </div>
+    <div className="px-8 py-8 space-y-5 max-w-7xl">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {total.toLocaleString()} {total === 1 ? "customer" : "customers"}
+        </p>
         <NewCustomerDialog />
       </div>
 

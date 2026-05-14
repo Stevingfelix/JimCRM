@@ -24,14 +24,11 @@ export default async function AnalyticsPage({
   );
 
   return (
-    <div className="px-8 py-8 space-y-8 max-w-7xl">
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Quote activity over the last {data.range_days} days.
-          </p>
-        </div>
+    <div className="px-8 py-8 space-y-6 max-w-7xl">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          Quote activity over the last {data.range_days} days.
+        </p>
         <div className="inline-flex rounded-full border overflow-hidden">
           {RANGES.map((r) => (
             <Link

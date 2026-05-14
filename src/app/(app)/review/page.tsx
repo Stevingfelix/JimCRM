@@ -24,13 +24,10 @@ export default async function ReviewPage({
   ]);
 
   return (
-    <div className="px-8 py-8 space-y-6 max-w-7xl">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Review queue</h1>
-        <p className="text-sm text-muted-foreground">
-          {rows.length} item{rows.length === 1 ? "" : "s"} need review
-        </p>
-      </div>
+    <div className="px-8 py-8 space-y-5 max-w-7xl">
+      <p className="text-sm text-muted-foreground">
+        {rows.length} item{rows.length === 1 ? "" : "s"} need review
+      </p>
 
       {searchParams.gmail === "connected" && (
         <div className="text-sm rounded-md border border-emerald-200 bg-emerald-50 dark:bg-emerald-950 dark:border-emerald-900 px-3 py-2">

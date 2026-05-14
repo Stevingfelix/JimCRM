@@ -70,19 +70,18 @@ export default async function TeamPage() {
     }));
 
   return (
-    <div className="px-8 py-8 space-y-6 max-w-5xl">
-      <div className="space-y-1">
-        <Link
-          href="/settings"
-          className="text-sm text-muted-foreground hover:underline"
-        >
-          ← back to Settings
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
+    <div className="px-8 py-8 space-y-5 max-w-5xl">
+      <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Invite teammates to quote, review extractions, and manage parts.
           Admins can also change settings and invite others.
         </p>
+        <Link
+          href="/settings"
+          className="text-sm text-muted-foreground hover:text-foreground shrink-0"
+        >
+          ← back
+        </Link>
       </div>
 
       <TeamManager members={members} invites={invites} />

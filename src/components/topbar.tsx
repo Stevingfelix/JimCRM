@@ -10,7 +10,7 @@ type Notif = React.ComponentProps<typeof NotificationBell>["initial"];
 const STATIC_TITLES: Record<string, string> = {
   "/": "Dashboard",
   "/quotes": "Quotes",
-  "/review": "Review",
+  "/review": "Review queue",
   "/parts": "Parts",
   "/parts/import": "Import parts",
   "/customers": "Customers",

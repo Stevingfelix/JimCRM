@@ -8,7 +8,6 @@ import { SavedSearchesMenu } from "@/components/saved-searches-menu";
 import { getSavedSearches } from "@/app/(app)/saved-searches/actions";
 import { listQuotes, type QuoteStatus } from "./queries";
 import { QuotesFilters } from "./components/quotes-filters";
-import { NewQuoteDialog } from "./components/new-quote-dialog";
 import { QuotesListBody } from "./components/quotes-list-body";
 
 const STATUS_VALUES = new Set([
@@ -39,22 +38,16 @@ export default async function QuotesPage({
   ]);
 
   return (
-    <div className="px-8 py-8 space-y-6 max-w-7xl">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Quotes</h1>
-          <p className="text-sm text-muted-foreground">
-            {total.toLocaleString()} total
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <SavedSearchesMenu
-            routeKey="quotes"
-            routeBase="/quotes"
-            initial={saved}
-          />
-          <NewQuoteDialog />
-        </div>
+    <div className="px-8 py-8 space-y-5 max-w-7xl">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {total.toLocaleString()} {total === 1 ? "quote" : "quotes"}
+        </p>
+        <SavedSearchesMenu
+          routeKey="quotes"
+          routeBase="/quotes"
+          initial={saved}
+        />
       </div>
 
       <QuotesFilters />

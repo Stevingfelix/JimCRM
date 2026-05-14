@@ -10,18 +10,17 @@ export default async function ProfilePage() {
   if (!me) redirect("/login");
 
   return (
-    <div className="px-8 py-8 space-y-6 max-w-5xl">
-      <div className="space-y-1">
-        <Link
-          href="/settings"
-          className="text-sm text-muted-foreground hover:underline"
-        >
-          ← back to Settings
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
+    <div className="px-8 py-8 space-y-5 max-w-5xl">
+      <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Your name, sign-in, and password.
         </p>
+        <Link
+          href="/settings"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          ← back to Settings
+        </Link>
       </div>
 
       <ProfileForm

@@ -28,23 +28,20 @@ export default async function ExportProfilesPage() {
     .order("created_at", { ascending: true });
 
   return (
-    <div className="px-8 py-8 space-y-6 max-w-5xl">
-      <div className="space-y-1">
-        <Link
-          href="/quotes"
-          className="text-sm text-muted-foreground hover:underline"
-        >
-          ← back
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          CSV export profiles
-        </h1>
+    <div className="px-8 py-8 space-y-5 max-w-5xl">
+      <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Configure the column names and order to match Jim&apos;s ERP&apos;s import
           format. The default profile is used when{" "}
           <code>/api/export/csv</code> is called without a <code>?profile=</code>{" "}
           parameter.
         </p>
+        <Link
+          href="/settings"
+          className="text-sm text-muted-foreground hover:text-foreground shrink-0"
+        >
+          ← back
+        </Link>
       </div>
 
       <ExportProfilesEditor

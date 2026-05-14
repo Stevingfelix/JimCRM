@@ -3,21 +3,18 @@ import { ImportClient } from "./components/import-client";
 
 export default function PartsImportPage() {
   return (
-    <div className="px-8 py-8 space-y-6 max-w-5xl">
-      <div className="flex items-center text-sm text-muted-foreground gap-1">
-        <Link href="/parts" className="hover:underline">
-          Parts
-        </Link>
-        <span>›</span>
-        <span className="text-foreground font-medium">Import from CSV</span>
-      </div>
-
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Bulk import</h1>
+    <div className="px-8 py-8 space-y-5 max-w-5xl">
+      <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Paste or upload a CSV to create parts in bulk. Aliases are imported
           in the same pass.
         </p>
+        <Link
+          href="/parts"
+          className="text-sm text-muted-foreground hover:text-foreground shrink-0"
+        >
+          ← back to Parts
+        </Link>
       </div>
 
       <div className="rounded-xl border bg-card p-5 space-y-3 text-sm">

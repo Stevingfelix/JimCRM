@@ -33,19 +33,18 @@ export default async function CompanyInfoPage() {
   }
 
   return (
-    <div className="px-8 py-8 space-y-6 max-w-3xl">
-      <div className="space-y-1">
-        <Link
-          href="/settings"
-          className="text-sm text-muted-foreground hover:underline"
-        >
-          ← back to Settings
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Company info</h1>
+    <div className="px-8 py-8 space-y-5 max-w-3xl">
+      <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           This information appears on quote PDFs, in the sidebar, and on the
           customer-facing portal.
         </p>
+        <Link
+          href="/settings"
+          className="text-sm text-muted-foreground hover:text-foreground shrink-0"
+        >
+          ← back
+        </Link>
       </div>
 
       <CompanyInfoForm

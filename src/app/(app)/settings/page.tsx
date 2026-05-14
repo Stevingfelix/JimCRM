@@ -42,13 +42,10 @@ const SECTIONS = [
 
 export default function SettingsIndexPage() {
   return (
-    <div className="px-8 py-8 space-y-6 max-w-5xl">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Configure your business identity, team, and export formats.
-        </p>
-      </div>
+    <div className="px-8 py-8 space-y-5 max-w-5xl">
+      <p className="text-sm text-muted-foreground">
+        Configure your business identity, team, and export formats.
+      </p>
 
       <div className="grid sm:grid-cols-2 gap-4">
         {SECTIONS.map(({ href, title, blurb, Icon }) => (
