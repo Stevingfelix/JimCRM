@@ -5,6 +5,14 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
@@ -203,13 +211,9 @@ export function ReviewEditor({
     }
   };
 
-  const onReject = () => {
-    if (
-      !confirm(
-        "Reject this email? It will be removed from the review queue without creating any records.",
-      )
-    )
-      return;
+  const [rejectOpen, setRejectOpen] = useState(false);
+
+  const confirmReject = () => {
     startReject(async () => {
       const result = await rejectReview(eventId);
       if (!result.ok) {
@@ -217,6 +221,7 @@ export function ReviewEditor({
         return;
       }
       toast.success("Rejected");
+      setRejectOpen(false);
       router.push("/review");
     });
   };
@@ -481,7 +486,7 @@ export function ReviewEditor({
           accepted
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={onReject}>
+          <Button variant="outline" onClick={() => setRejectOpen(true)}>
             Reject email
           </Button>
           <Button onClick={onCommit} disabled={committing || acceptedCount === 0}>
@@ -493,6 +498,45 @@ export function ReviewEditor({
           </Button>
         </div>
       </div>
+
+      <Dialog
+        open={rejectOpen}
+        onOpenChange={(o) => {
+          // Block close while the reject is in flight so the user doesn't
+          // accidentally dismiss mid-call.
+          if (!o) setRejectOpen(false);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject this email?</DialogTitle>
+            <DialogDescription>
+              It will be removed from the review queue without creating any
+              quote or vendor-quote records. This can&apos;t be undone — if
+              you change your mind, the email will need to be re-imported
+              from Gmail.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-row items-center justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setRejectOpen(false)}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmReject}
+              className="rounded-full"
+            >
+              Reject email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
