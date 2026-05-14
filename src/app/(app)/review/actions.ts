@@ -180,6 +180,36 @@ export async function rejectReview(
   }
 }
 
+const BulkRejectSchema = z
+  .array(z.string().uuid())
+  .min(1, "Pick at least one item")
+  .max(500, "Too many at once");
+
+export async function rejectReviewBulk(
+  eventIds: string[],
+): Promise<ActionResult<{ count: number }>> {
+  const parsed = BulkRejectSchema.safeParse(eventIds);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+  try {
+    const supabase = createAdminClient();
+    const userId = await getCurrentUserId();
+    const { data, error } = await supabase
+      .from("email_events")
+      .update({
+        needs_review: false,
+        parse_status: "skipped",
+        updated_by: userId,
+      })
+      .in("id", parsed.data)
+      .select("id");
+    if (error) return err(error.code ?? "db_error", error.message);
+    revalidatePath("/review");
+    return ok({ count: data?.length ?? 0 });
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
 export async function pollNow(): Promise<ActionResult<{ processed: number }>> {
   try {
     const result = await pollGmail();
