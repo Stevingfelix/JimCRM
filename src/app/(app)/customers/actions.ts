@@ -314,6 +314,76 @@ export async function extractCustomerFromText(
   }
 }
 
+// Light-weight read used by the Edit Customer modal on the list page.
+// Detail page still owns deeper edits (pricing rules, contacts list).
+
+export async function getCustomerForQuickEdit(
+  id: string,
+): Promise<
+  ActionResult<{
+    id: string;
+    name: string;
+    billing_address: string | null;
+    notes: string | null;
+  }>
+> {
+  if (!z.string().uuid().safeParse(id).success) {
+    return err("validation", "Invalid id");
+  }
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("customers")
+      .select("id, name, billing_address, notes")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (error) return err(error.code ?? "db_error", error.message);
+    if (!data) return err("not_found", "Customer not found");
+    return ok({
+      id: data.id,
+      name: data.name,
+      billing_address: data.billing_address,
+      notes: data.notes,
+    });
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
+const QuickUpdateCustomerSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1, "Name is required").max(200),
+  billing_address: z.string().trim().max(500).nullable(),
+  notes: z.string().trim().max(2000).nullable(),
+});
+
+export async function quickUpdateCustomer(
+  input: z.input<typeof QuickUpdateCustomerSchema>,
+): Promise<ActionResult<void>> {
+  const parsed = QuickUpdateCustomerSchema.safeParse(input);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+  try {
+    const supabase = createClient();
+    const userId = await getCurrentUserId();
+    const { error } = await supabase
+      .from("customers")
+      .update({
+        name: parsed.data.name,
+        billing_address: parsed.data.billing_address,
+        notes: parsed.data.notes,
+        updated_by: userId,
+      })
+      .eq("id", parsed.data.id);
+    if (error) return err(error.code ?? "db_error", error.message);
+    revalidatePath("/customers");
+    revalidatePath(`/customers/${parsed.data.id}`);
+    return ok(undefined);
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
 export async function softDeleteCustomer(
   id: string,
 ): Promise<ActionResult<void>> {

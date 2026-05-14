@@ -560,7 +560,7 @@ const CreateQuoteWithLinesSchema = z.object({
 
 export async function createQuoteWithLines(
   input: z.input<typeof CreateQuoteWithLinesSchema>,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: string; quote_number: number }>> {
   const parsed = CreateQuoteWithLinesSchema.safeParse(input);
   if (!parsed.success) return err("validation", parsed.error.issues[0].message);
   try {
@@ -591,7 +591,7 @@ export async function createQuoteWithLines(
         created_by: userId,
         updated_by: userId,
       })
-      .select("id")
+      .select("id, quote_number")
       .single();
     if (qErr) return err(qErr.code ?? "db_error", qErr.message);
 
@@ -620,7 +620,7 @@ export async function createQuoteWithLines(
 
     revalidatePath("/quotes");
     revalidatePath(`/customers/${parsed.data.customer_id}`);
-    return ok({ id: quote.id });
+    return ok({ id: quote.id, quote_number: quote.quote_number });
   } catch (e) {
     return fromException(e);
   }

@@ -27,6 +27,7 @@ import { NewCustomerDialog } from "@/app/(app)/customers/components/new-customer
 import { cn } from "@/lib/utils";
 import { formatMoney, formatQuoteNumber } from "@/lib/format";
 import { searchPartsAction, searchCustomersAction } from "../../lookups";
+import { QuoteCreatedDialog } from "./quote-created-dialog";
 import {
   createQuoteWithLines,
   extractQuoteFromText,
@@ -92,6 +93,14 @@ export function QuoteBuilder({
   const [internalNotes, setInternalNotes] = useState("");
   const [lines, setLines] = useState<Line[]>([newLine()]);
   const [pending, startTransition] = useTransition();
+  // When set, shows the post-create success modal with share / send / PDF
+  // actions. Populated only on the "finalize" save path; "draft" navigates
+  // straight back to the list with no modal.
+  const [created, setCreated] = useState<{
+    id: string;
+    display_number: string;
+    customer_name: string;
+  } | null>(null);
 
   const subtotal = useMemo(
     () =>
@@ -185,6 +194,7 @@ export function QuoteBuilder({
         qty: l.qty,
         unit_price: l.unit_price,
       }));
+    const customerName = customer.name;
     startTransition(async () => {
       const res = await createQuoteWithLines({
         customer_id: customer.id,
@@ -197,22 +207,28 @@ export function QuoteBuilder({
         toast.error(res.error.message);
         return;
       }
-      toast.success(
-        mode === "draft" ? "Saved as draft" : "Quote created",
-      );
-      // Native View Transition for a smooth fade when the browser supports
-      // it; falls back to a normal navigation otherwise.
-      const w = window as unknown as {
-        startViewTransition?: (cb: () => void) => unknown;
-      };
-      const target =
-        mode === "draft" ? "/quotes" : `/quotes/${res.data.id}`;
-      const navigate = () => router.push(target);
-      if (typeof w.startViewTransition === "function") {
-        w.startViewTransition(navigate);
-      } else {
-        navigate();
+
+      if (mode === "draft") {
+        toast.success("Saved as draft");
+        const w = window as unknown as {
+          startViewTransition?: (cb: () => void) => unknown;
+        };
+        const navigate = () => router.push("/quotes");
+        if (typeof w.startViewTransition === "function") {
+          w.startViewTransition(navigate);
+        } else {
+          navigate();
+        }
+        return;
       }
+
+      // Finalize path: open the success modal with share / send / PDF
+      // actions instead of redirecting immediately.
+      setCreated({
+        id: res.data.id,
+        display_number: formatQuoteNumber(res.data.quote_number),
+        customer_name: customerName,
+      });
     });
   }
 
@@ -431,6 +447,16 @@ export function QuoteBuilder({
           </button>
         </div>
       </form>
+
+      {created && (
+        <QuoteCreatedDialog
+          quoteId={created.id}
+          displayNumber={created.display_number}
+          customerName={created.customer_name}
+          initialPublicToken={null}
+          onClose={() => setCreated(null)}
+        />
+      )}
     </div>
   );
 }

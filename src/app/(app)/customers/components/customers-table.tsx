@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
 import type { CustomerListRow } from "../queries";
 import { softDeleteCustomer } from "../actions";
+import { EditCustomerDialog } from "./edit-customer-dialog";
 
 type Props = {
   rows: CustomerListRow[];
@@ -49,6 +50,7 @@ export function CustomersTable({
 }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirming, setConfirming] = useState<CustomerListRow | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const allOnPage = rows.length > 0 && rows.every((r) => selected.has(r.id));
 
   function toggleAll() {
@@ -146,7 +148,11 @@ export function CustomersTable({
                     {formatMoney(row.total_won)}
                   </td>
                   <td className="px-3 py-3 align-middle">
-                    <RowMenu row={row} onDelete={() => setConfirming(row)} />
+                    <RowMenu
+                      row={row}
+                      onEdit={() => setEditingId(row.id)}
+                      onDelete={() => setConfirming(row)}
+                    />
                   </td>
                 </tr>
               ))
@@ -176,18 +182,24 @@ export function CustomersTable({
         row={confirming}
         onClose={() => setConfirming(null)}
       />
+
+      <EditCustomerDialog
+        customerId={editingId}
+        onClose={() => setEditingId(null)}
+      />
     </>
   );
 }
 
 function RowMenu({
   row,
+  onEdit,
   onDelete,
 }: {
   row: CustomerListRow;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
-  const router = useRouter();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -197,7 +209,7 @@ function RowMenu({
         <MoreHorizontal className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[180px]">
-        <DropdownMenuItem onClick={() => router.push(`/customers/${row.id}`)}>
+        <DropdownMenuItem onClick={onEdit}>
           <Pencil className="size-4 mr-2" />
           Edit customer
         </DropdownMenuItem>
