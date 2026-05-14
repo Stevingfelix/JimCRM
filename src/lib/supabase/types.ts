@@ -212,6 +212,7 @@ export type Database = {
           contacts: Json
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           discount_pct: number
           id: string
           markup_multiplier: number
@@ -226,6 +227,7 @@ export type Database = {
           contacts?: Json
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           discount_pct?: number
           id?: string
           markup_multiplier?: number
@@ -240,6 +242,7 @@ export type Database = {
           contacts?: Json
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           discount_pct?: number
           id?: string
           markup_multiplier?: number

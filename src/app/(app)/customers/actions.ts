@@ -313,3 +313,27 @@ export async function extractCustomerFromText(
     return fromException(e);
   }
 }
+
+export async function softDeleteCustomer(
+  id: string,
+): Promise<ActionResult<void>> {
+  if (!z.string().uuid().safeParse(id).success) {
+    return err("validation", "Invalid id");
+  }
+  try {
+    const supabase = createClient();
+    const userId = await getCurrentUserId();
+    const { error } = await supabase
+      .from("customers")
+      .update({
+        deleted_at: new Date().toISOString(),
+        updated_by: userId,
+      })
+      .eq("id", id);
+    if (error) return err(error.code ?? "db_error", error.message);
+    revalidatePath("/customers");
+    return ok(undefined);
+  } catch (e) {
+    return fromException(e);
+  }
+}
