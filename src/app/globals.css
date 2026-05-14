@@ -67,8 +67,29 @@
   * {
     @apply border-border;
   }
+  html {
+    /* Plus Jakarta Sans reads slightly looser than Geist; nudge the base
+     * size down a hair so existing layouts don't grow vertically. */
+    font-feature-settings:
+      "cv11" on, /* humanist single-story a in places */
+      "ss01" on, /* tighter quote glyphs */
+      "ss03" on; /* alternate g */
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
   body {
     @apply bg-background text-foreground antialiased;
+    font-feature-settings: inherit;
+    letter-spacing: -0.005em; /* a hair tighter, premium feel */
+  }
+  h1, h2, h3, h4, h5, h6 {
+    /* Headings benefit from slightly tighter tracking with Jakarta. */
+    letter-spacing: -0.018em;
+  }
+  /* Tabular numbers stay aligned in dollar columns / tables. */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
 
