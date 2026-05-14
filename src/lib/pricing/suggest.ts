@@ -1,24 +1,29 @@
 import { z } from "zod";
 import { getAnthropic, MODELS } from "@/lib/anthropic";
+import { retry } from "@/lib/retry";
+import { trackLlmCall } from "@/lib/llm-telemetry";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { qtyTier, readPriceCache, writePriceCache } from "./cache";
 
-const SYSTEM_PROMPT = `You are a pricing assistant for CAP Hardware Supply, a hardware/fastener distributor. You suggest a customer-facing unit price for a single quote line, given:
+const SYSTEM_PROMPT = `You are a pricing assistant for CAP Hardware Supply (hardware/fastener distributor). Suggest a customer-facing unit price for a single quote line.
+
+Inputs you'll see:
 - The internal part description
-- The customer asking for the quote
-- The 5 most recent customer quotes for the same part (cross-customer)
-- The latest vendor cost for the same part (your cost basis)
-- The qty tier of this request
+- The customer
+- Last 5 customer quotes for the same part (cross-customer)
+- Latest vendor cost (your cost basis)
+- The qty tier
 
-Pricing principles:
-- Aim for a markup over the latest vendor cost that's consistent with recent quotes.
-- Larger qty tiers get a lower markup (volume discount).
-- If recent quotes vary widely, weight more recent prices higher.
-- If you have NO vendor cost AND NO history, set confidence < 0.5 and return your best guess based on the description alone.
-- If you have only vendor cost (no history), apply a default ~25% markup and explain.
-- If you have only history (no vendor cost), follow the most recent comparable quote and explain.
-- Round prices to 4 decimal places.
+Principles:
+- Markup over latest vendor cost, consistent with recent quotes.
+- Larger qty tiers → lower markup (volume discount).
+- Wide-variance history → weight more recent prices higher.
+- No vendor cost AND no history → confidence < 0.5, best guess from description.
+- Only vendor cost → ~25% default markup, explain.
+- Only history → follow the most recent comparable, explain.
+- Round to 4 decimal places.
 
-Output via the suggest_price tool. Reasoning should be ONE sentence describing what data you used and why you landed on the price.`;
+Output via the suggest_price tool. Reasoning is ONE sentence describing the data used and why the price.`;
 
 const SUGGEST_TOOL = {
   name: "suggest_price",
@@ -42,19 +47,17 @@ const SuggestResultSchema = z.object({
 
 export type SuggestResult = z.infer<typeof SuggestResultSchema>;
 
-function qtyTier(qty: number): string {
-  if (qty < 10) return "1-9";
-  if (qty < 50) return "10-49";
-  if (qty < 100) return "50-99";
-  if (qty < 500) return "100-499";
-  return "500+";
-}
-
 export async function suggestPrice(args: {
   part_id: string;
   qty: number;
   customer_id: string;
 }): Promise<SuggestResult> {
+  // Cache check — invalidated by triggers when vendor_quotes or quote_lines
+  // for this part change, so the cached value is always consistent with
+  // current inputs.
+  const cached = await readPriceCache(args);
+  if (cached) return cached;
+
   const supabase = createAdminClient();
 
   const [partRes, historyRes, vendorRes, customerRes] = await Promise.all([
@@ -106,14 +109,11 @@ export async function suggestPrice(args: {
   const history = (historyRes.data ?? []) as unknown as HistoryRow[];
   const vendor = vendorRes.data as unknown as VendorRow;
 
-  // Build the per-call context. Static system prompt is cache-controlled.
   const ctx: string[] = [];
   ctx.push(
     `Part: ${partRes.data.internal_pn}${partRes.data.description ? ` — ${partRes.data.description}` : ""}`,
   );
-  ctx.push(
-    `Customer: ${customerRes.data?.name ?? "(unknown)"}`,
-  );
+  ctx.push(`Customer: ${customerRes.data?.name ?? "(unknown)"}`);
   ctx.push(`Qty asked: ${args.qty} (tier ${qtyTier(args.qty)})`);
   ctx.push("");
   ctx.push("Last 5 customer quotes for this part:");
@@ -137,28 +137,35 @@ export async function suggestPrice(args: {
   }
 
   const client = getAnthropic();
-  const response = await client.messages.create({
-    model: MODELS.classification, // Haiku — cheap for this reasoning task
-    max_tokens: 1024,
-    tools: [
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      SUGGEST_TOOL as any,
-    ],
-    tool_choice: { type: "tool", name: SUGGEST_TOOL.name },
-    system: [
-      {
-        type: "text",
-        text: SYSTEM_PROMPT,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages: [{ role: "user", content: ctx.join("\n") }],
-  });
+  const response = await trackLlmCall(
+    "price_suggest",
+    MODELS.classification,
+    () =>
+      retry(() =>
+        client.messages.create({
+          model: MODELS.classification, // Haiku
+          max_tokens: 1024,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tools: [SUGGEST_TOOL as any],
+          tool_choice: { type: "tool", name: SUGGEST_TOOL.name },
+          system: [
+            {
+              type: "text",
+              text: SYSTEM_PROMPT,
+              cache_control: { type: "ephemeral" },
+            },
+          ],
+          messages: [{ role: "user", content: ctx.join("\n") }],
+        }),
+      ),
+  );
 
   const toolUse = response.content.find(
     (c): c is Extract<typeof c, { type: "tool_use" }> => c.type === "tool_use",
   );
   if (!toolUse) throw new Error("Anthropic response missing tool_use block");
 
-  return SuggestResultSchema.parse(toolUse.input);
+  const result = SuggestResultSchema.parse(toolUse.input);
+  await writePriceCache({ ...args, result });
+  return result;
 }

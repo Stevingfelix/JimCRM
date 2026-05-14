@@ -1,4 +1,6 @@
 import { getAnthropic, MODELS } from "@/lib/anthropic";
+import { retry } from "@/lib/retry";
+import { trackLlmCall } from "@/lib/llm-telemetry";
 import {
   ExtractionResultSchema,
   type ExtractionResult,
@@ -94,25 +96,29 @@ export async function extractEmailBody(input: {
     .filter((x): x is string => x !== null)
     .join("\n");
 
-  const response = await client.messages.create({
-    model: MODELS.extraction,
-    max_tokens: 4096,
-    tools: [
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      EXTRACTION_TOOL as any,
-    ],
-    tool_choice: { type: "tool", name: EXTRACTION_TOOL.name },
-    system: [
-      {
-        type: "text",
-        text: SYSTEM_PROMPT,
-        // Anthropic prompt cache: this stable prefix is reused across every
-        // extraction call, paying ~10% of the cost on cache hits (5-min TTL).
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages: [{ role: "user", content: userContent }],
-  });
+  const response = await trackLlmCall("email_body", MODELS.extraction, () =>
+    retry(() =>
+      client.messages.create({
+      model: MODELS.extraction,
+      max_tokens: 4096,
+      tools: [
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        EXTRACTION_TOOL as any,
+      ],
+      tool_choice: { type: "tool", name: EXTRACTION_TOOL.name },
+      system: [
+        {
+          type: "text",
+          text: SYSTEM_PROMPT,
+          // Anthropic prompt cache: this stable prefix is reused across every
+          // extraction call, paying ~10% of the cost on cache hits (5-min TTL).
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+        messages: [{ role: "user", content: userContent }],
+      }),
+    ),
+  );
 
   const toolUse = response.content.find(
     (c): c is Extract<typeof c, { type: "tool_use" }> => c.type === "tool_use",

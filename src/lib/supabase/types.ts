@@ -39,6 +39,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      attachment_extractions: {
+        Row: {
+          content_hash: string
+          created_at: string
+          extraction: Json
+          hit_count: number
+          id: string
+          last_hit_at: string
+          prompt_version: string
+        }
+        Insert: {
+          content_hash: string
+          created_at?: string
+          extraction: Json
+          hit_count?: number
+          id?: string
+          last_hit_at?: string
+          prompt_version: string
+        }
+        Update: {
+          content_hash?: string
+          created_at?: string
+          extraction?: Json
+          hit_count?: number
+          id?: string
+          last_hit_at?: string
+          prompt_version?: string
+        }
+        Relationships: []
+      }
       customer_contacts: {
         Row: {
           created_at: string
@@ -220,6 +250,54 @@ export type Database = {
         }
         Relationships: []
       }
+      llm_calls: {
+        Row: {
+          cache_creation_input_tokens: number
+          cache_read_input_tokens: number
+          call_type: string
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          estimated_cost_usd: number
+          id: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+          related_id: string | null
+          succeeded: boolean
+        }
+        Insert: {
+          cache_creation_input_tokens?: number
+          cache_read_input_tokens?: number
+          call_type: string
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          estimated_cost_usd?: number
+          id?: string
+          input_tokens?: number
+          model: string
+          output_tokens?: number
+          related_id?: string | null
+          succeeded?: boolean
+        }
+        Update: {
+          cache_creation_input_tokens?: number
+          cache_read_input_tokens?: number
+          call_type?: string
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          estimated_cost_usd?: number
+          id?: string
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          related_id?: string | null
+          succeeded?: boolean
+        }
+        Relationships: []
+      }
       part_aliases: {
         Row: {
           alias_pn: string
@@ -332,6 +410,54 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      price_suggestion_cache: {
+        Row: {
+          confidence: number
+          created_at: string
+          customer_id: string
+          id: string
+          part_id: string
+          qty_bucket: string
+          reasoning: string
+          suggested_price: number
+        }
+        Insert: {
+          confidence: number
+          created_at?: string
+          customer_id: string
+          id?: string
+          part_id: string
+          qty_bucket: string
+          reasoning: string
+          suggested_price: number
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          customer_id?: string
+          id?: string
+          part_id?: string
+          qty_bucket?: string
+          reasoning?: string
+          suggested_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_suggestion_cache_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_suggestion_cache_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quote_attachments: {
         Row: {
