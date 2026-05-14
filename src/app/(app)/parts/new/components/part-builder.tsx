@@ -199,7 +199,18 @@ export function PartBuilder({ reference }: Props) {
                 <Field label="Family *">
                   <Select value={familyCode} onValueChange={(v) => setFamilyCode(v ?? "")}>
                     <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Pick a product family" />
+                      {family ? (
+                        <span className="flex items-center gap-2 truncate">
+                          <span className="font-mono text-xs text-muted-foreground">
+                            {family.code}
+                          </span>
+                          <span className="text-foreground truncate">
+                            {family.name}
+                          </span>
+                        </span>
+                      ) : (
+                        <SelectValue placeholder="Pick a product family" />
+                      )}
                     </SelectTrigger>
                     <SelectContent>
                       {reference.families.map((f) => (
@@ -216,7 +227,19 @@ export function PartBuilder({ reference }: Props) {
                 <Field label="Size *">
                   <Select value={sizeId} onValueChange={(v) => setSizeId(v ?? "")}>
                     <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Pick a size" />
+                      {sizeRow ? (
+                        <span className="flex items-center gap-2 truncate">
+                          <span className="font-mono text-xs text-muted-foreground">
+                            {sizeRow.code}
+                          </span>
+                          <span className="text-foreground">{sizeRow.label}</span>
+                          <span className="ml-auto text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                            {sizeRow.system}
+                          </span>
+                        </span>
+                      ) : (
+                        <SelectValue placeholder="Pick a size" />
+                      )}
                     </SelectTrigger>
                     <SelectContent>
                       {imperialSizes.length > 0 && (
@@ -245,7 +268,25 @@ export function PartBuilder({ reference }: Props) {
                     disabled={!family?.requires_thread}
                   >
                     <SelectTrigger className="h-11">
-                      <SelectValue placeholder="—" />
+                      {threadCode ? (
+                        (() => {
+                          const t = reference.threads.find(
+                            (x) => x.code === threadCode,
+                          );
+                          return t ? (
+                            <span className="flex items-center gap-2 truncate">
+                              <span className="font-mono text-xs text-muted-foreground">
+                                {t.code}
+                              </span>
+                              <span className="text-foreground">{t.label}</span>
+                            </span>
+                          ) : (
+                            <SelectValue placeholder="—" />
+                          );
+                        })()
+                      ) : (
+                        <SelectValue placeholder="—" />
+                      )}
                     </SelectTrigger>
                     <SelectContent>
                       {reference.threads.map((t) => (
@@ -288,7 +329,30 @@ export function PartBuilder({ reference }: Props) {
                   onValueChange={(v) => setAttributeCode(v === "__none__" ? "" : (v ?? ""))}
                 >
                   <SelectTrigger className="h-11">
-                    <SelectValue placeholder="—" />
+                    {attributeCode ? (
+                      (() => {
+                        const a = reference.attributes.find(
+                          (x) => x.code === attributeCode,
+                        );
+                        return a ? (
+                          <span className="flex items-center gap-2 truncate">
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {a.code}
+                            </span>
+                            <span className="text-foreground truncate">
+                              {a.label}
+                            </span>
+                            <span className="ml-auto text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                              {a.kind}
+                            </span>
+                          </span>
+                        ) : (
+                          <SelectValue placeholder="—" />
+                        );
+                      })()
+                    ) : (
+                      <SelectValue placeholder="—" />
+                    )}
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">
