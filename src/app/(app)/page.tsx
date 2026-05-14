@@ -1,53 +1,102 @@
 import Link from "next/link";
-import { Inbox, FileText, Send, Package, Clock } from "lucide-react";
+import {
+  Inbox,
+  FileText,
+  Clock,
+  Wallet,
+  Receipt,
+  TrendingUp,
+  AlertCircle,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { SetupBanner } from "@/components/setup-banner";
 import { formatDate, formatMoney, formatQuoteNumber } from "@/lib/format";
+import { getCompanyInfo } from "@/lib/company";
 import { getDashboardData } from "./dashboard-queries";
 import { getReorderHints } from "./reorder-queries";
 
+// Things we consider required for a "complete" business setup.
+function missingSetup(c: Awaited<ReturnType<typeof getCompanyInfo>>): string[] {
+  const out: string[] = [];
+  if (!c.logo_url) out.push("logo");
+  if (
+    !c.company_name ||
+    c.company_name === "My Company" ||
+    c.company_name === "CAP Hardware Supply"
+  )
+    out.push("company name");
+  if (!c.contact_email) out.push("contact email");
+  if (!c.address) out.push("address");
+  return out;
+}
+
 export default async function DashboardPage() {
-  const [data, reorderHints] = await Promise.all([
+  const [data, reorderHints, company] = await Promise.all([
     getDashboardData(),
     getReorderHints(8),
+    getCompanyInfo(),
   ]);
 
-  return (
-    <div className="px-8 py-8 space-y-8 max-w-7xl">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Status at a glance for CAP Hardware Supply.
-        </p>
-      </div>
+  const missing = missingSetup(company);
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          icon={<Inbox className="size-4" />}
-          label="Pending review"
-          value={data.kpis.pending_review}
-          tone={data.kpis.pending_review > 0 ? "primary" : "muted"}
-          href="/review"
-        />
-        <KpiCard
-          icon={<FileText className="size-4" />}
-          label="Drafts in progress"
-          value={data.kpis.drafts_in_progress}
-          href="/quotes?status=draft"
-        />
-        <KpiCard
-          icon={<Send className="size-4" />}
-          label="Sent this week"
-          value={data.kpis.sent_this_week}
-          href="/quotes?status=sent"
-        />
-        <KpiCard
-          icon={<Package className="size-4" />}
-          label="Parts in catalog"
-          value={data.kpis.parts_in_catalog}
-          href="/parts"
-        />
+  return (
+    <div className="px-8 py-8 space-y-6 max-w-7xl">
+      <SetupBanner missing={missing} />
+
+      {/* QUOTING OVERVIEW */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold tracking-tight">
+            Quoting Overview
+          </h2>
+          <span className="text-xs text-muted-foreground">Last 7 days</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard
+            icon={<Wallet className="size-4" />}
+            label="Sent this week"
+            value={data.kpis.sent_this_week}
+            subline={
+              data.kpis.sent_this_week === 0
+                ? "No quotes sent in period"
+                : `${data.kpis.sent_this_week} quote${data.kpis.sent_this_week === 1 ? "" : "s"} out the door`
+            }
+            href="/quotes?status=sent"
+          />
+          <KpiCard
+            icon={<Receipt className="size-4" />}
+            label="Drafts in progress"
+            value={data.kpis.drafts_in_progress}
+            subline={
+              data.kpis.drafts_in_progress === 0
+                ? "No drafts open"
+                : "Pick up where you left off"
+            }
+            href="/quotes?status=draft"
+          />
+          <KpiCard
+            icon={<TrendingUp className="size-4" />}
+            label="Parts in catalog"
+            value={data.kpis.parts_in_catalog}
+            subline="Total active SKUs"
+            href="/parts"
+          />
+          <KpiCard
+            icon={<AlertCircle className="size-4" />}
+            label="Pending review"
+            value={data.kpis.pending_review}
+            subline={
+              data.kpis.pending_review === 0
+                ? "Review queue is clear"
+                : "Inbound emails awaiting action"
+            }
+            tone={data.kpis.pending_review > 0 ? "primary" : "default"}
+            href="/review"
+          />
+        </div>
       </section>
 
+      {/* REORDER REMINDERS */}
       {reorderHints.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-center gap-2">
@@ -92,8 +141,14 @@ export default async function DashboardPage() {
         </section>
       )}
 
+      {/* RECENT ACTIVITY GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title="Recent quotes" emptyText="No quotes yet" href="/quotes">
+        <Card
+          title="Recent quotes"
+          emptyIcon={<FileText className="size-5" />}
+          emptyText="No quotes yet"
+          href="/quotes"
+        >
           {data.recent_quotes.length > 0 && (
             <ul className="divide-y">
               {data.recent_quotes.map((q) => (
@@ -117,7 +172,7 @@ export default async function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-sm tabular-nums font-medium">
-                        {formatMoney(q.total)}
+                        {q.total != null ? formatMoney(q.total) : "—"}
                       </div>
                       <div className="text-xs text-muted-foreground tabular-nums">
                         {formatDate(q.created_at)} · {q.line_count} line
@@ -133,7 +188,8 @@ export default async function DashboardPage() {
 
         <Card
           title="Pending review"
-          emptyText="Review queue is clear ✨"
+          emptyIcon={<Inbox className="size-5" />}
+          emptyText="Review queue is clear"
           href="/review"
         >
           {data.recent_review.length > 0 && (
@@ -183,13 +239,15 @@ function KpiCard({
   icon,
   label,
   value,
+  subline,
   tone = "default",
   href,
 }: {
   icon: React.ReactNode;
   label: string;
   value: number;
-  tone?: "default" | "primary" | "muted";
+  subline: string;
+  tone?: "default" | "primary";
   href: string;
 }) {
   return (
@@ -197,32 +255,37 @@ function KpiCard({
       href={href}
       className="block rounded-xl border bg-card p-5 transition-shadow hover:shadow-sm"
     >
-      <div
-        className={`inline-flex items-center justify-center size-8 rounded-lg mb-3 ${
-          tone === "primary"
-            ? "bg-primary/10 text-primary"
-            : "bg-muted text-muted-foreground"
-        }`}
-      >
-        {icon}
+      <div className="flex items-start justify-between">
+        <div className="text-xs text-muted-foreground tracking-wide font-medium uppercase">
+          {label}
+        </div>
+        <div
+          className={`inline-flex items-center justify-center size-7 rounded-lg ${
+            tone === "primary"
+              ? "bg-primary/10 text-primary"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {icon}
+        </div>
       </div>
-      <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-        {label}
-      </div>
-      <div className="text-2xl font-semibold tabular-nums mt-1">
+      <div className="text-3xl font-semibold tabular-nums mt-3 tracking-tight">
         {value.toLocaleString()}
       </div>
+      <div className="text-xs text-muted-foreground mt-1.5">{subline}</div>
     </Link>
   );
 }
 
 function Card({
   title,
+  emptyIcon,
   emptyText,
   href,
   children,
 }: {
   title: string;
+  emptyIcon: React.ReactNode;
   emptyText: string;
   href: string;
   children?: React.ReactNode;
@@ -239,10 +302,14 @@ function Card({
         </Link>
       </div>
       {children ?? (
-        <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-          {emptyText}
+        <div className="px-4 py-10 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+          <div className="size-10 rounded-full bg-muted grid place-items-center">
+            {emptyIcon}
+          </div>
+          <div className="text-sm">{emptyText}</div>
         </div>
       )}
     </div>
   );
 }
+
