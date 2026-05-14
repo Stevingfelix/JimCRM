@@ -210,9 +210,13 @@ export function BlindTemplate({ quote }: QuotePdfProps) {
         <Text
           style={styles.footer}
           fixed
-          render={({ pageNumber, totalPages }) =>
-            `${quote.display_number}  ·  Page ${pageNumber} of ${totalPages}`
-          }
+          render={({ pageNumber, totalPages }) => {
+            const parts = [quote.display_number];
+            if (quote.company.pdf_footer_text)
+              parts.push(quote.company.pdf_footer_text);
+            parts.push(`Page ${pageNumber} of ${totalPages}`);
+            return parts.join("  ·  ");
+          }}
         />
       </Page>
     </Document>

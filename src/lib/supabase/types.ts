@@ -69,6 +69,60 @@ export type Database = {
         }
         Relationships: []
       }
+      company_info: {
+        Row: {
+          address: string | null
+          brand_color: string | null
+          company_name: string
+          contact_email: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          logo_path: string | null
+          pdf_footer_text: string | null
+          phone: string | null
+          tagline: string | null
+          tax_id: string | null
+          updated_at: string
+          updated_by: string | null
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          brand_color?: string | null
+          company_name?: string
+          contact_email?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_path?: string | null
+          pdf_footer_text?: string | null
+          phone?: string | null
+          tagline?: string | null
+          tax_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          brand_color?: string | null
+          company_name?: string
+          contact_email?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_path?: string | null
+          pdf_footer_text?: string | null
+          phone?: string | null
+          tagline?: string | null
+          tax_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       csv_export_profiles: {
         Row: {
           column_map: Json
@@ -782,6 +836,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      team_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_user_id: string | null
+          created_at: string
+          email: string
+          id: string
+          invited_at: string
+          invited_by: string | null
+          role: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_user_id?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          invited_at?: string
+          invited_by?: string | null
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_user_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          invited_at?: string
+          invited_by?: string | null
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       vendor_contacts: {
         Row: {

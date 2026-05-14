@@ -2,6 +2,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { createElement } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatQuoteNumber } from "@/lib/format";
+import { getCompanyInfo } from "@/lib/company";
 import { getTemplate } from "@/pdf/templates/registry";
 import type { QuotePdfData } from "@/pdf/templates/types";
 
@@ -53,6 +54,8 @@ export async function renderQuotePdf(quoteId: string): Promise<{
     if (tpl?.react_component_key) templateKey = tpl.react_component_key;
   }
 
+  const company = await getCompanyInfo();
+
   const data: QuotePdfData = {
     display_number: formatQuoteNumber(q.quote_number),
     customer_name: q.customers.name,
@@ -68,6 +71,18 @@ export async function renderQuotePdf(quoteId: string): Promise<{
         part_internal_pn: l.parts?.internal_pn ?? null,
         part_description: l.parts?.description ?? null,
       })),
+    company: {
+      company_name: company.company_name,
+      tagline: company.tagline,
+      contact_email: company.contact_email,
+      phone: company.phone,
+      website: company.website,
+      address: company.address,
+      tax_id: company.tax_id,
+      logo_url: company.logo_url,
+      pdf_footer_text: company.pdf_footer_text,
+      brand_color: company.brand_color,
+    },
   };
 
   const Template = getTemplate(templateKey);

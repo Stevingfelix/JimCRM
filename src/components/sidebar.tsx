@@ -12,6 +12,7 @@ import {
   Truck,
   LogOut,
   BarChart3,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/app/(auth)/login/actions";
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { href: "/customers", label: "Customers", Icon: Users },
   { href: "/vendors", label: "Vendors", Icon: Truck },
   { href: "/analytics", label: "Analytics", Icon: BarChart3 },
+  { href: "/settings", label: "Settings", Icon: Settings },
 ];
 
 type Props = {
@@ -32,6 +34,10 @@ type Props = {
     email: string | null;
     full_name: string | null;
     role: string;
+  };
+  company: {
+    name: string;
+    logo_url: string | null;
   };
 };
 
@@ -54,21 +60,39 @@ function initialsFromUser(user: Props["user"]): string {
   return "?";
 }
 
-export function Sidebar({ reviewCount = 0, user }: Props) {
+function companyMonogram(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return (parts[0]?.slice(0, 2) || "—").toUpperCase();
+}
+
+export function Sidebar({ reviewCount = 0, user, company }: Props) {
   const pathname = usePathname();
   const initials = initialsFromUser(user);
   const displayName =
     user.full_name || (user.email ? user.email.split("@")[0] : "User");
   const [signingOut, startSignOut] = useTransition();
+  const monogram = companyMonogram(company.name);
 
   return (
     <aside className="w-60 shrink-0 border-r bg-card flex flex-col">
       <div className="px-5 py-5 border-b">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="size-8 rounded-lg bg-brand-gradient text-primary-foreground grid place-items-center font-bold text-sm shadow-sm">
-            C
-          </div>
-          <span className="font-semibold tracking-tight">CAP Quoting</span>
+          {company.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={company.logo_url}
+              alt={company.name}
+              className="size-8 rounded-lg object-contain bg-white border"
+            />
+          ) : (
+            <div className="size-8 rounded-lg bg-brand-gradient text-primary-foreground grid place-items-center font-bold text-sm shadow-sm">
+              {monogram}
+            </div>
+          )}
+          <span className="font-semibold tracking-tight truncate">
+            {company.name}
+          </span>
         </Link>
       </div>
 

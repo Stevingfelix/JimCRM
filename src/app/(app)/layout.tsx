@@ -4,6 +4,7 @@ import { NotificationBell } from "@/components/notification-bell";
 import { CommandPalette } from "@/components/command-palette";
 import { Toaster } from "@/components/ui/sonner";
 import { getCurrentUser } from "@/lib/auth";
+import { getCompanyInfo } from "@/lib/company";
 import { countNeedsReview } from "./review/queries";
 import { getNotifications } from "./notifications/queries";
 
@@ -30,13 +31,14 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  const [reviewCount, notifications] = await Promise.all([
+  const [reviewCount, notifications, company] = await Promise.all([
     countNeedsReview().catch(() => 0),
     getNotifications(10).catch(() => ({
       unread_count: 0,
       recent: [],
       last_seen_at: null,
     })),
+    getCompanyInfo(),
   ]);
 
   return (
@@ -47,6 +49,10 @@ export default async function AppLayout({
           email: user.email,
           full_name: user.full_name,
           role: user.role === "admin" ? "Admin" : "User",
+        }}
+        company={{
+          name: company.company_name,
+          logo_url: company.logo_url,
         }}
       />
       <div className="flex-1 min-w-0 flex flex-col">

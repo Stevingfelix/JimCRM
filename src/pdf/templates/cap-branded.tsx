@@ -4,6 +4,7 @@ import {
   Page,
   Text,
   View,
+  Image,
   StyleSheet,
 } from "@react-pdf/renderer";
 import type { QuotePdfProps } from "./types";
@@ -11,7 +12,7 @@ import type { QuotePdfProps } from "./types";
 const styles = StyleSheet.create({
   page: {
     paddingTop: 48,
-    paddingBottom: 48,
+    paddingBottom: 56,
     paddingHorizontal: 48,
     fontSize: 10,
     fontFamily: "Helvetica",
@@ -23,21 +24,30 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 28,
   },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  logo: { width: 48, height: 48, objectFit: "contain" },
   company: { fontSize: 16, fontWeight: 700, marginBottom: 2 },
   companySub: { fontSize: 9, color: "#666" },
-  quoteMeta: {
-    fontSize: 10,
-    textAlign: "right",
-  },
+  quoteMeta: { fontSize: 10, textAlign: "right" },
   quoteNumber: { fontSize: 14, fontWeight: 700, marginBottom: 4 },
   metaLine: { marginTop: 2, color: "#444" },
+  accentBar: { height: 3, marginBottom: 18 },
   customerBlock: {
     marginBottom: 24,
     padding: 12,
     backgroundColor: "#f5f5f5",
     borderRadius: 4,
   },
-  customerLabel: { fontSize: 8, color: "#666", marginBottom: 4, textTransform: "uppercase" },
+  customerLabel: {
+    fontSize: 8,
+    color: "#666",
+    marginBottom: 4,
+    textTransform: "uppercase",
+  },
   customerName: { fontSize: 11, fontWeight: 700 },
   tableHeader: {
     flexDirection: "row",
@@ -109,26 +119,53 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
+function isValidHex(s: string | null): s is string {
+  return !!s && /^#[0-9a-fA-F]{6}$/.test(s);
+}
+
 export function CapBrandedTemplate({ quote }: QuotePdfProps) {
   const subtotal = quote.lines.reduce<number>((acc, l) => {
     if (l.unit_price == null) return acc;
     return acc + l.qty * l.unit_price;
   }, 0);
 
+  const { company } = quote;
+  const accentColor = isValidHex(company.brand_color)
+    ? company.brand_color
+    : "#10b981";
+
+  const footerLine = [
+    quote.display_number,
+    company.company_name,
+    company.pdf_footer_text,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <Document
-      title={`Quote ${quote.display_number}`}
-      author="CAP Hardware Supply"
-    >
+    <Document title={`Quote ${quote.display_number}`} author={company.company_name}>
       <Page size="LETTER" style={styles.page}>
         {/* HEADER */}
         <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.company}>CAP Hardware Supply</Text>
-            <Text style={styles.companySub}>
-              Industrial fasteners &amp; hardware
-            </Text>
-            <Text style={styles.companySub}>info@caphardware.com</Text>
+          <View style={styles.headerLeft}>
+            {company.logo_url && (
+              <Image style={styles.logo} src={company.logo_url} />
+            )}
+            <View>
+              <Text style={styles.company}>{company.company_name}</Text>
+              {company.tagline && (
+                <Text style={styles.companySub}>{company.tagline}</Text>
+              )}
+              {company.contact_email && (
+                <Text style={styles.companySub}>{company.contact_email}</Text>
+              )}
+              {company.phone && (
+                <Text style={styles.companySub}>{company.phone}</Text>
+              )}
+              {company.website && (
+                <Text style={styles.companySub}>{company.website}</Text>
+              )}
+            </View>
           </View>
           <View style={styles.quoteMeta}>
             <Text style={styles.quoteNumber}>{quote.display_number}</Text>
@@ -142,6 +179,8 @@ export function CapBrandedTemplate({ quote }: QuotePdfProps) {
             )}
           </View>
         </View>
+
+        <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
 
         {/* CUSTOMER */}
         <View style={styles.customerBlock}>
@@ -204,7 +243,7 @@ export function CapBrandedTemplate({ quote }: QuotePdfProps) {
           style={styles.footer}
           fixed
           render={({ pageNumber, totalPages }) =>
-            `${quote.display_number} · CAP Hardware Supply · Page ${pageNumber} of ${totalPages}`
+            `${footerLine}  ·  Page ${pageNumber} of ${totalPages}`
           }
         />
       </Page>
