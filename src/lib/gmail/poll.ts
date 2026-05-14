@@ -60,10 +60,18 @@ export async function pollGmail(): Promise<PollResult> {
     unseenIds = candidateIds.filter((id) => !seen.has(id));
   }
 
+  // Cap per cron tick so we always finish inside Vercel Hobby's 10s timeout.
+  // Each email costs ~3s (body) up to ~10s (with a heavy PDF attachment),
+  // so 3 per tick is the safe ceiling. On Vercel Pro (60s timeout) this can
+  // be raised or removed.
+  const MAX_PER_TICK = 3;
+  const batch = unseenIds.slice(0, MAX_PER_TICK);
+  const deferred = unseenIds.length - batch.length;
+
   let processed = 0;
   let errors = 0;
 
-  for (const msgId of unseenIds) {
+  for (const msgId of batch) {
     try {
       const msg = await getMessage(accessToken, msgId);
       await processMessage(msg, creds.watched_label, accessToken);
@@ -89,7 +97,8 @@ export async function pollGmail(): Promise<PollResult> {
   return {
     status: "ok",
     processed,
-    skipped: candidateIds.length - unseenIds.length,
+    // already-seen emails this tick + new emails deferred to a future tick
+    skipped: candidateIds.length - unseenIds.length + deferred,
     errors,
     label: creds.watched_label,
   };
