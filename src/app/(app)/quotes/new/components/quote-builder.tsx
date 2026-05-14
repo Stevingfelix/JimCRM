@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   GripVertical,
   Plus,
-  Sparkles,
   Trash2,
   UserPlus,
   X,
@@ -18,7 +17,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { AiTextAssist } from "@/components/ai-text-assist";
+import {
+  AiTextPanel,
+  AiVoicePanel,
+  AiTriggerButtons,
+} from "@/components/ai-text-assist";
+import { NewCustomerDialog } from "@/app/(app)/customers/components/new-customer-dialog";
 import { cn } from "@/lib/utils";
 import { formatMoney, formatQuoteNumber } from "@/lib/format";
 import { searchPartsAction, searchCustomersAction } from "../../lookups";
@@ -73,7 +77,8 @@ export function QuoteBuilder({
   presetCustomerId,
 }: Props) {
   const router = useRouter();
-  const [aiOpen, setAiOpen] = useState(false);
+  const [aiMode, setAiMode] = useState<"voice" | "text" | null>(null);
+  const [processing, setProcessing] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(
     presetCustomerId
       ? initialCustomers.find((c) => c.id === presetCustomerId) ?? null
@@ -117,6 +122,15 @@ export function QuoteBuilder({
   }
   function addLine() {
     setLines((ls) => [...ls, newLine()]);
+  }
+
+  async function trackedExtract(text: string) {
+    setProcessing(true);
+    try {
+      return await extractQuoteFromText(text);
+    } finally {
+      setProcessing(false);
+    }
   }
 
   function applyExtraction(r: ExtractedQuote) {
@@ -212,65 +226,73 @@ export function QuoteBuilder({
 
       <form onSubmit={handleSave} className="space-y-6">
         <section className="rounded-xl border bg-card p-6 space-y-5">
-          {/* Title + AI buttons */}
+          {/* Title + AI triggers */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="text-lg font-semibold tracking-tight">
               Quote Details
             </h2>
-            <button
-              type="button"
-              onClick={() => setAiOpen((v) => !v)}
-              aria-pressed={aiOpen}
-              className={cn(
-                "inline-flex items-center gap-1.5 h-9 rounded-full border px-3 text-sm transition-colors",
-                aiOpen
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-brand-gradient-soft text-primary border-primary/30 hover:opacity-90",
-              )}
-            >
-              <Sparkles className="size-4" />
-              {aiOpen ? "Hide AI assist" : "Fill with AI"}
-            </button>
+            <AiTriggerButtons
+              active={aiMode}
+              onPick={setAiMode}
+              disabled={processing}
+            />
           </div>
 
-          {aiOpen && (
-            <AiTextAssist
-              extractAction={extractQuoteFromText}
-              onExtracted={applyExtraction}
-              placeholder="Paste an inbound RFQ email, or tap Speak and read the parts list."
-              hint="paste an RFQ or tap Speak"
+          {aiMode === "text" && (
+            <AiTextPanel
+              extractAction={trackedExtract}
+              onExtracted={(r) => applyExtraction(r as ExtractedQuote)}
+              onClose={() => setAiMode(null)}
+              title="Describe the quote in plain language."
+              placeholder="e.g. RFQ from Acme — need 50 hex bolts M8, 200 washers A2 stainless, by Friday, ship to NY."
             />
           )}
 
-          {/* Customer + dates row */}
-          <div className="grid md:grid-cols-2 gap-5">
-            <CustomerPicker
-              value={customer}
-              onChange={setCustomer}
-              initialCustomers={initialCustomers}
+          {aiMode === "voice" && (
+            <AiVoicePanel
+              extractAction={trackedExtract}
+              onExtracted={(r) => applyExtraction(r as ExtractedQuote)}
+              onClose={() => setAiMode(null)}
             />
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Issue Date">
-                <Input value={today()} disabled />
-              </Field>
-              <Field label="Validity Date">
+          )}
+
+          <div
+            className={cn(
+              "space-y-5 transition-all",
+              processing && "blur-sm opacity-60 pointer-events-none",
+            )}
+            aria-busy={processing}
+          >
+            {/* Customer + dates row */}
+            <div className="grid md:grid-cols-2 gap-5">
+              <CustomerPicker
+                value={customer}
+                onChange={setCustomer}
+                initialCustomers={initialCustomers}
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Issue Date">
+                  <Input value={today()} disabled />
+                </Field>
+                <Field label="Validity Date">
+                  <Input
+                    type="date"
+                    value={validity}
+                    onChange={(e) => setValidity(e.target.value)}
+                  />
+                </Field>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-5">
+              <Field label="Quote Number">
                 <Input
-                  type="date"
-                  value={validity}
-                  onChange={(e) => setValidity(e.target.value)}
+                  value={`${formatQuoteNumber(previewQuoteNumber)} (assigned on save)`}
+                  disabled
                 />
               </Field>
+              <div />
             </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-5">
-            <Field label="Quote Number">
-              <Input
-                value={`${formatQuoteNumber(previewQuoteNumber)} (assigned on save)`}
-                disabled
-              />
-            </Field>
-            <div />
           </div>
         </section>
 
@@ -677,13 +699,21 @@ function CustomerPicker({
         <Label className="text-xs font-medium text-muted-foreground">
           Customer
         </Label>
-        <Link
-          href="/customers"
-          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-        >
-          <UserPlus className="size-3.5" />
-          Add new customer
-        </Link>
+        <NewCustomerDialog
+          onCreated={(c) => {
+            onChange(c);
+            setOpen(false);
+          }}
+          trigger={
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+            >
+              <UserPlus className="size-3.5" />
+              Add new customer
+            </button>
+          }
+        />
       </div>
       <div className="relative">
         {value ? (

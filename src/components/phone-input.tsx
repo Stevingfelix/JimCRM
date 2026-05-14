@@ -1,14 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Common country dial codes. Order: US first (most likely default for this
 // app's audience), then alphabetical. Extend by appending — order in the list
@@ -40,9 +34,6 @@ export const COUNTRIES = [
 
 type CountryCode = (typeof COUNTRIES)[number]["code"];
 
-// Parse a stored phone string back into [country, local]. We store the
-// concatenated form (e.g. "+1 555-0199") so reads stay simple; the split is
-// best-effort.
 function splitPhone(value: string): { code: CountryCode; local: string } {
   const trimmed = value.trim();
   for (const c of COUNTRIES) {
@@ -60,10 +51,15 @@ type Props = {
   id?: string;
 };
 
+// Phone input with the country flag/dial-code embedded inside the same
+// rounded box as the local number field — single visual control, not two
+// adjacent ones.
 export function PhoneInput({ value, onChange, placeholder, id }: Props) {
   const initial = useMemo(() => splitPhone(value), [value]);
   const [code, setCode] = useState<CountryCode>(initial.code);
   const [local, setLocal] = useState<string>(initial.local);
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   const country = COUNTRIES.find((c) => c.code === code) ?? COUNTRIES[0];
 
@@ -73,49 +69,79 @@ export function PhoneInput({ value, onChange, placeholder, id }: Props) {
     onChange(trimmed ? `${c.dial} ${trimmed}` : "");
   }
 
+  // Click-outside to close the country list.
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
   return (
-    <div className="flex items-stretch gap-2">
-      <Select
-        value={code}
-        onValueChange={(v) => {
-          const nextCode = v as CountryCode;
-          setCode(nextCode);
-          emit(nextCode, local);
-        }}
+    <div className="relative" ref={wrapRef}>
+      <div
+        className={cn(
+          // Mirror the Input component's surface so the inline trigger blends.
+          "flex h-10 w-full items-center gap-2 rounded-md border bg-background text-sm",
+          "border-input shadow-sm transition-colors",
+          "focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30",
+        )}
       >
-        <SelectTrigger className="w-[110px] shrink-0">
-          <SelectValue>
-            <span className="flex items-center gap-1.5">
-              <span className="text-base leading-none">{country.flag}</span>
-              <span className="text-xs tabular-nums">{country.dial}</span>
-            </span>
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          className="flex items-center gap-1 h-full pl-3 pr-2 rounded-l-md hover:bg-muted/60 transition-colors shrink-0"
+        >
+          <span className="text-base leading-none">{country.flag}</span>
+          <ChevronDown className="size-3 text-muted-foreground" />
+        </button>
+        <div className="h-5 w-px bg-border" />
+        <input
+          id={id}
+          type="tel"
+          value={local}
+          onChange={(e) => {
+            setLocal(e.target.value);
+            emit(code, e.target.value);
+          }}
+          placeholder={placeholder ?? `e.g. ${country.dial} 555-0199`}
+          className="flex-1 bg-transparent h-full pr-3 outline-none placeholder:text-muted-foreground tabular-nums"
+        />
+      </div>
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute z-20 mt-1 left-0 w-72 max-h-60 overflow-auto rounded-lg border bg-card shadow-lg py-1"
+        >
           {COUNTRIES.map((c) => (
-            <SelectItem key={c.code} value={c.code}>
-              <span className="flex items-center gap-2">
+            <li key={c.code}>
+              <button
+                type="button"
+                onClick={() => {
+                  setCode(c.code);
+                  emit(c.code, local);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left",
+                  c.code === code && "bg-muted",
+                )}
+              >
                 <span className="text-base leading-none">{c.flag}</span>
-                <span>{c.name}</span>
-                <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                <span className="flex-1 truncate">{c.name}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">
                   {c.dial}
                 </span>
-              </span>
-            </SelectItem>
+              </button>
+            </li>
           ))}
-        </SelectContent>
-      </Select>
-      <Input
-        id={id}
-        type="tel"
-        value={local}
-        onChange={(e) => {
-          setLocal(e.target.value);
-          emit(code, e.target.value);
-        }}
-        placeholder={placeholder ?? "555-0199"}
-        className="flex-1"
-      />
+        </ul>
+      )}
     </div>
   );
 }

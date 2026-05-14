@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,7 +15,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PhoneInput } from "@/components/phone-input";
-import { AiTextAssist } from "@/components/ai-text-assist";
+import {
+  AiTextPanel,
+  AiVoicePanel,
+  AiTriggerButtons,
+} from "@/components/ai-text-assist";
 import { cn } from "@/lib/utils";
 import {
   createCustomer,
@@ -24,10 +27,20 @@ import {
   type ExtractedCustomer,
 } from "../actions";
 
-export function NewCustomerDialog() {
+type Props = {
+  // If provided, called instead of redirecting to the customer detail page
+  // after save. Useful when the dialog is opened from another flow (e.g. the
+  // quote builder) where we want the new customer selected in place.
+  onCreated?: (customer: { id: string; name: string }) => void;
+  // Custom trigger element. Defaults to a "+ New customer" pill button.
+  trigger?: React.ReactNode;
+};
+
+export function NewCustomerDialog({ onCreated, trigger }: Props = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
+  const [aiMode, setAiMode] = useState<"voice" | "text" | null>(null);
+  const [processing, setProcessing] = useState(false);
 
   const [name, setName] = useState("");
   const [contactName, setContactName] = useState("");
@@ -42,7 +55,8 @@ export function NewCustomerDialog() {
     setEmail("");
     setPhone("");
     setBillingAddress("");
-    setAiOpen(false);
+    setAiMode(null);
+    setProcessing(false);
   };
 
   function applyExtraction(r: ExtractedCustomer) {
@@ -53,19 +67,30 @@ export function NewCustomerDialog() {
     if (r.billing_address) setBillingAddress(r.billing_address);
   }
 
+  // Wrap the extract action so we can flip the form into a "processing"
+  // visual state (blurred / dimmed) while Claude is working. The toast
+  // notification itself comes from the AI panel.
+  async function trackedExtract(text: string) {
+    setProcessing(true);
+    try {
+      return await extractCustomerFromText(text);
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   const canSubmit = name.trim().length > 0 || contactName.trim().length > 0;
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Either company OR contact name is required (one stands in for the other).
     if (!canSubmit) {
       toast.error("Provide a company or contact name");
       return;
     }
+    const finalName = name.trim() || contactName.trim();
     startTransition(async () => {
       const result = await createCustomer({
-        // If only contact was given, use it as the customer name.
-        name: name.trim() || contactName.trim(),
+        name: finalName,
         billing_address: billingAddress.trim() || null,
         primary_contact:
           contactName || email || phone
@@ -84,7 +109,11 @@ export function NewCustomerDialog() {
       toast.success("Customer saved");
       reset();
       setOpen(false);
-      router.push(`/customers/${result.data.id}`);
+      if (onCreated) {
+        onCreated({ id: result.data.id, name: finalName });
+      } else {
+        router.push(`/customers/${result.data.id}`);
+      }
     });
   };
 
@@ -96,46 +125,57 @@ export function NewCustomerDialog() {
         if (!o) reset();
       }}
     >
-      <DialogTrigger render={<Button className="h-10 rounded-full px-5" />}>
-        + New customer
-      </DialogTrigger>
+      {trigger ? (
+        <DialogTrigger render={trigger as React.ReactElement} />
+      ) : (
+        <DialogTrigger render={<Button className="h-10 rounded-full px-5" />}>
+          + New customer
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-lg">
-        <form onSubmit={onSubmit} className="space-y-4">
-          <DialogHeader className="space-y-1.5">
-            <div className="flex items-center justify-between gap-3 pr-10">
-              <DialogTitle>Add new customer</DialogTitle>
-              <button
-                type="button"
-                onClick={() => setAiOpen((v) => !v)}
-                aria-pressed={aiOpen}
-                className={cn(
-                  "inline-flex items-center justify-center size-8 rounded-full border transition-colors",
-                  aiOpen
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-brand-gradient-soft text-primary border-primary/30 hover:opacity-90",
-                )}
-                aria-label="Toggle AI assist"
-                title="Fill with AI (paste text or speak)"
-              >
-                <Sparkles className="size-4" />
-              </button>
-            </div>
-          </DialogHeader>
-
-          {aiOpen && (
-            <AiTextAssist
-              extractAction={extractCustomerFromText}
-              onExtracted={applyExtraction}
-              hint="paste a signature, or tap Speak"
+        <DialogHeader className="space-y-0">
+          <div className="flex items-center justify-between gap-3 pr-10">
+            <DialogTitle>Add New Customer</DialogTitle>
+            <AiTriggerButtons
+              active={aiMode}
+              onPick={setAiMode}
+              disabled={processing}
             />
-          )}
+          </div>
+        </DialogHeader>
 
+        {aiMode === "text" && (
+          <AiTextPanel
+            extractAction={trackedExtract}
+            onExtracted={(r) => applyExtraction(r as ExtractedCustomer)}
+            onClose={() => setAiMode(null)}
+          />
+        )}
+
+        {aiMode === "voice" && (
+          <AiVoicePanel
+            extractAction={trackedExtract}
+            onExtracted={(r) => applyExtraction(r as ExtractedCustomer)}
+            onClose={() => setAiMode(null)}
+          />
+        )}
+
+        {/* Form blurs while AI is processing — the loading toast is the
+            foreground element. */}
+        <form
+          onSubmit={onSubmit}
+          className={cn(
+            "space-y-4 transition-all",
+            processing && "blur-sm opacity-60 pointer-events-none",
+          )}
+          aria-busy={processing}
+        >
           <div className="space-y-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="name" className="text-xs font-medium">
+              <Label htmlFor="name" className="text-sm font-medium">
                 Company Name{" "}
                 <span className="text-muted-foreground font-normal">
-                  (optional if contact name given)
+                  (Optional if contact name given)
                 </span>
               </Label>
               <Input
@@ -143,31 +183,31 @@ export function NewCustomerDialog() {
                 autoFocus
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Acme Group"
+                placeholder="e.g. Acme Corp"
               />
             </div>
 
             <div className="grid gap-1.5">
-              <Label htmlFor="contact-name" className="text-xs font-medium">
+              <Label htmlFor="contact-name" className="text-sm font-medium">
                 Contact Name{" "}
                 <span className="text-muted-foreground font-normal">
-                  (optional if company name given)
+                  (Optional if company name given)
                 </span>
               </Label>
               <Input
                 id="contact-name"
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
-                placeholder="John Doe"
+                placeholder="e.g. John Doe"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="email" className="text-xs font-medium">
+                <Label htmlFor="email" className="text-sm font-medium">
                   Email Address{" "}
                   <span className="text-muted-foreground font-normal">
-                    (optional)
+                    (Optional)
                   </span>
                 </Label>
                 <Input
@@ -175,24 +215,24 @@ export function NewCustomerDialog() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="billing@acmegroup.com"
+                  placeholder="e.g. billing@acmecorp.com"
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="phone" className="text-xs font-medium">
+                <Label htmlFor="phone" className="text-sm font-medium">
                   Phone Number
                 </Label>
                 <PhoneInput
                   id="phone"
                   value={phone}
                   onChange={setPhone}
-                  placeholder="e.g. 555-0199"
+                  placeholder="e.g. +1 555-0199"
                 />
               </div>
             </div>
 
             <div className="grid gap-1.5">
-              <Label htmlFor="billing" className="text-xs font-medium">
+              <Label htmlFor="billing" className="text-sm font-medium">
                 Billing Address
               </Label>
               <Textarea
@@ -200,7 +240,7 @@ export function NewCustomerDialog() {
                 rows={3}
                 value={billingAddress}
                 onChange={(e) => setBillingAddress(e.target.value)}
-                placeholder={"e.g. 123 Industry Way\nSuite 200\nCity, ST 00000"}
+                placeholder="e.g. 123 Industry Way, NY"
               />
             </div>
           </div>
