@@ -1,4 +1,3 @@
-import { PDFParse } from "pdf-parse";
 import { getAnthropic, MODELS } from "@/lib/anthropic";
 import { retry } from "@/lib/retry";
 import { trackLlmCall } from "@/lib/llm-telemetry";
@@ -22,7 +21,34 @@ import {
   writeAttachmentCache,
 } from "./attachment-cache";
 
+// pdf-parse pulls in pdfjs-dist's legacy build which references browser
+// globals (DOMMatrix, Path2D, ImageData) at module load. Node serverless
+// functions don't have them and crash on import. We:
+//   1) Stub the globals before the first `import("pdf-parse")` call so the
+//      module can initialize without throwing.
+//   2) Lazy-import pdf-parse inside the function so the rest of the route
+//      (auth check, no-PDF emails) still works even if pdf-parse breaks.
+// The stubs are empty constructors — sufficient for module init; pdf-parse
+// only uses them transitively for raster rendering, which we don't do
+// (we only extract text).
+function installPdfjsShims() {
+  const g = globalThis as unknown as Record<string, unknown>;
+  if (typeof g.DOMMatrix === "undefined") {
+    g.DOMMatrix = class {};
+  }
+  if (typeof g.Path2D === "undefined") {
+    g.Path2D = class {};
+  }
+  if (typeof g.ImageData === "undefined") {
+    g.ImageData = class {};
+  }
+}
+
 async function pdfParse(data: Buffer): Promise<{ text: string }> {
+  installPdfjsShims();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mod: any = await import("pdf-parse");
+  const PDFParse = mod.PDFParse ?? mod.default?.PDFParse ?? mod.default;
   const parser = new PDFParse({ data });
   const result = await parser.getText();
   return { text: result.text };
