@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserId } from "@/lib/auth";
+import { getAnthropic, MODELS } from "@/lib/anthropic";
 import { type ActionResult, err, fromException, ok } from "@/lib/result";
 
 const QUOTE_STATUSES = ["draft", "sent", "won", "lost", "expired"] as const;
@@ -535,4 +536,217 @@ export async function softDeleteQuote(id: string): Promise<ActionResult<void>> {
   }
   revalidatePath("/quotes");
   redirect("/quotes");
+}
+
+// One-shot draft creation: quote header + all lines in a single round-trip.
+// Used by /quotes/new (full-page builder). If creating without lines just call
+// createQuote() above.
+
+const NewQuoteLineSchema = z.object({
+  // Either part_id (linked) or description (free-text). At least one required.
+  part_id: z.string().uuid().nullable(),
+  description: z.string().trim().max(2000).nullable(),
+  qty: z.coerce.number().min(0).max(1_000_000),
+  unit_price: z.coerce.number().min(0).max(1_000_000).nullable(),
+});
+
+const CreateQuoteWithLinesSchema = z.object({
+  customer_id: z.string().uuid(),
+  validity_date: z.string().date().optional().nullable(),
+  customer_notes: z.string().trim().max(4000).optional().nullable(),
+  internal_notes: z.string().trim().max(2000).optional().nullable(),
+  lines: z.array(NewQuoteLineSchema).max(200),
+});
+
+export async function createQuoteWithLines(
+  input: z.input<typeof CreateQuoteWithLinesSchema>,
+): Promise<ActionResult<{ id: string }>> {
+  const parsed = CreateQuoteWithLinesSchema.safeParse(input);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+  try {
+    const supabase = createClient();
+    const userId = await getCurrentUserId();
+
+    const { data: template } = await supabase
+      .from("pdf_templates")
+      .select("id")
+      .eq("is_default", true)
+      .maybeSingle();
+
+    const validity =
+      parsed.data.validity_date ??
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
+
+    const { data: quote, error: qErr } = await supabase
+      .from("quotes")
+      .insert({
+        customer_id: parsed.data.customer_id,
+        validity_date: validity,
+        customer_notes: parsed.data.customer_notes ?? null,
+        internal_notes: parsed.data.internal_notes ?? null,
+        status: "draft",
+        template_id: template?.id ?? null,
+        created_by: userId,
+        updated_by: userId,
+      })
+      .select("id")
+      .single();
+    if (qErr) return err(qErr.code ?? "db_error", qErr.message);
+
+    const nonEmpty = parsed.data.lines.filter(
+      (l) => l.part_id || (l.description && l.description.trim()),
+    );
+    if (nonEmpty.length > 0) {
+      const linesPayload = nonEmpty.map((l, idx) => ({
+        quote_id: quote.id,
+        part_id: l.part_id,
+        qty: l.qty,
+        unit_price: l.unit_price,
+        // Free-text descriptions land in line_notes_customer so they print
+        // on the PDF. If a part is linked, the PDF uses the part description
+        // and this stays as a per-line annotation.
+        line_notes_customer: l.description ?? null,
+        position: idx + 1,
+        created_by: userId,
+        updated_by: userId,
+      }));
+      const { error: lErr } = await supabase
+        .from("quote_lines")
+        .insert(linesPayload);
+      if (lErr) return err(lErr.code ?? "db_error", lErr.message);
+    }
+
+    revalidatePath("/quotes");
+    revalidatePath(`/customers/${parsed.data.customer_id}`);
+    return ok({ id: quote.id });
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
+// AI extraction for the new-quote builder. Takes pasted text or a voice
+// transcript and returns a draft quote: customer hint, validity, notes, and
+// any line items it can pull out. Runs on Sonnet — line extraction benefits
+// from the larger model.
+
+const QUOTE_EXTRACT_TOOL = {
+  name: "extract_quote_draft",
+  description:
+    "Structured draft of a quote parsed from free text or a voice transcript.",
+  input_schema: {
+    type: "object",
+    properties: {
+      customer_name: { type: ["string", "null"] },
+      customer_email: { type: ["string", "null"] },
+      validity_date: {
+        type: ["string", "null"],
+        description: "YYYY-MM-DD if a deadline / expiry is mentioned",
+      },
+      customer_notes: {
+        type: ["string", "null"],
+        description: "Brief note visible to customer (terms, freight, etc.)",
+      },
+      internal_notes: {
+        type: ["string", "null"],
+        description: "Internal-only note (won't print on the PDF)",
+      },
+      lines: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            description: { type: "string" },
+            part_number_guess: { type: ["string", "null"] },
+            qty: { type: ["number", "null"] },
+            unit_price: { type: ["number", "null"] },
+          },
+          required: ["description", "part_number_guess", "qty", "unit_price"],
+        },
+      },
+    },
+    required: [
+      "customer_name",
+      "customer_email",
+      "validity_date",
+      "customer_notes",
+      "internal_notes",
+      "lines",
+    ],
+  },
+} as const;
+
+const QUOTE_EXTRACT_SYSTEM = `You parse short notes, RFQ emails, or voice transcripts into a draft quote for CAP Hardware Supply.
+
+Rules:
+- Output ONLY via the extract_quote_draft tool. No prose.
+- customer_name: the buying company, if stated. Else null.
+- customer_email: any email address found.
+- validity_date: ISO YYYY-MM-DD if a deadline is mentioned (e.g. "needed by Friday" → next Friday). Else null.
+- customer_notes: terms / freight / notes that should appear on the PDF.
+- internal_notes: anything we'd write to ourselves (not shown to customer).
+- lines: each line item the user wants quoted. Set qty to null if unclear. Set unit_price to null unless the source explicitly states our selling price. part_number_guess: any PN-shaped token (manufacturer PN, internal PN, vendor SKU); null if the line is described in plain English.
+- description: a verbatim, customer-facing description of the item (drop the qty number from this string).
+- Do NOT invent part numbers, prices, or quantities. Use null aggressively.`;
+
+const ExtractedQuoteSchema = z.object({
+  customer_name: z.string().nullable(),
+  customer_email: z.string().nullable(),
+  validity_date: z.string().nullable(),
+  customer_notes: z.string().nullable(),
+  internal_notes: z.string().nullable(),
+  lines: z.array(
+    z.object({
+      description: z.string(),
+      part_number_guess: z.string().nullable(),
+      qty: z.number().nullable(),
+      unit_price: z.number().nullable(),
+    }),
+  ),
+});
+
+export type ExtractedQuote = z.infer<typeof ExtractedQuoteSchema>;
+
+export async function extractQuoteFromText(
+  text: string,
+): Promise<ActionResult<ExtractedQuote>> {
+  const t = text.trim();
+  if (!t) return err("validation", "Paste or speak something first");
+  if (t.length > 12_000) {
+    return err("validation", "Too long — keep under 12,000 characters");
+  }
+
+  try {
+    const client = getAnthropic();
+    const response = await client.messages.create({
+      model: MODELS.extraction, // Sonnet — line extraction wants the better model
+      max_tokens: 4096,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tools: [QUOTE_EXTRACT_TOOL as any],
+      tool_choice: { type: "tool", name: QUOTE_EXTRACT_TOOL.name },
+      system: [
+        {
+          type: "text",
+          text: QUOTE_EXTRACT_SYSTEM,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages: [{ role: "user", content: t }],
+    });
+
+    const toolUse = response.content.find(
+      (c): c is Extract<typeof c, { type: "tool_use" }> =>
+        c.type === "tool_use",
+    );
+    if (!toolUse) return err("llm_error", "Could not extract — try again");
+
+    const parsed = ExtractedQuoteSchema.safeParse(toolUse.input);
+    if (!parsed.success) {
+      return err("llm_error", "Got an unexpected response shape");
+    }
+    return ok(parsed.data);
+  } catch (e) {
+    return fromException(e);
+  }
 }

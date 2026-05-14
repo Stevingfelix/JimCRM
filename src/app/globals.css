@@ -90,3 +90,31 @@
     color: transparent;
   }
 }
+
+
+/* ─────────────────────────────────────────────────────────────────────
+ * View Transitions for the quote builder → quote detail navigation.
+ * The /quotes/new builder sets view-transition-name on its wrapper; when
+ * we navigate to /quotes/[id] inside document.startViewTransition(), the
+ * browser cross-fades + scales the old surface into the new one. Falls
+ * back to a normal route change in browsers without native support
+ * (Firefox today).
+ * ───────────────────────────────────────────────────────────────────── */
+::view-transition-old(quote-builder),
+::view-transition-new(quote-builder) {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+::view-transition-old(quote-builder) {
+  animation-name: builder-fade-out;
+}
+::view-transition-new(quote-builder) {
+  animation-name: builder-fade-in;
+}
+@keyframes builder-fade-out {
+  to { opacity: 0; transform: scale(0.985); }
+}
+@keyframes builder-fade-in {
+  from { opacity: 0; transform: scale(1.015); }
+}
+

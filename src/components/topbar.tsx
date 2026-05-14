@@ -1,18 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification-bell";
-import { NewQuoteDialog } from "@/app/(app)/quotes/components/new-quote-dialog";
 import { NewCustomerDialog } from "@/app/(app)/customers/components/new-customer-dialog";
 import { NewPartDialog } from "@/app/(app)/parts/components/new-part-dialog";
 import { NewVendorDialog } from "@/app/(app)/vendors/components/new-vendor-dialog";
+import { cn } from "@/lib/utils";
 
 type Notif = React.ComponentProps<typeof NotificationBell>["initial"];
 
 const STATIC_TITLES: Record<string, string> = {
   "/": "Dashboard",
   "/quotes": "Quotes",
+  "/quotes/new": "New quote",
   "/review": "Review queue",
   "/parts": "Parts",
   "/parts/import": "Import parts",
@@ -36,18 +39,28 @@ function titleFor(pathname: string): string {
   return "";
 }
 
-// Pick the right "+ New X" dialog for the current route. Each dialog is
-// self-contained (its own trigger button and state), so we just render the
-// matching component. Returns null on routes where a new action doesn't fit
-// (Review / Analytics / Settings / their children).
+// Pick the right "+ New X" action for the current route. Quotes uses a full
+// page (link); the others still open a dialog in place. Returns null on
+// routes where a new action doesn't fit (Review / Analytics / Settings).
 function ActionFor({ pathname }: { pathname: string }) {
+  // On the new-quote page itself, no CTA.
+  if (pathname === "/quotes/new") return null;
+
   const segments = pathname.split("/").filter(Boolean);
   const top = "/" + (segments[0] ?? "");
 
   switch (top) {
     case "/":
     case "/quotes":
-      return <NewQuoteDialog />;
+      return (
+        <Link
+          href="/quotes/new"
+          className={cn(buttonVariants(), "h-10 rounded-full px-5")}
+        >
+          <Plus className="size-4 mr-1.5" />
+          New quote
+        </Link>
+      );
     case "/customers":
       return <NewCustomerDialog />;
     case "/parts":

@@ -13,7 +13,9 @@ import {
 import { getCustomerDetail } from "../queries";
 import { CustomerForm } from "./components/customer-form";
 import { ContactsEditor } from "./components/contacts-editor";
-import { NewQuoteDialog } from "./components/new-quote-dialog";
+import { Plus } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function formatDate(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
@@ -44,10 +46,13 @@ export default async function CustomerDetailPage({
             {detail.customer.name}
           </span>
         </div>
-        <NewQuoteDialog
-          customerId={detail.customer.id}
-          customerName={detail.customer.name}
-        />
+        <Link
+          href={`/quotes/new?customer=${detail.customer.id}`}
+          className={cn(buttonVariants(), "h-10 rounded-full px-5")}
+        >
+          <Plus className="size-4 mr-1.5" />
+          New quote
+        </Link>
       </div>
 
       <CustomerForm initial={detail.customer} />
