@@ -26,6 +26,7 @@ import {
   commitReviewToVendorQuotes,
   rejectReview,
 } from "../../actions";
+import { InlineCreatePart } from "./inline-create-part";
 
 type Picked = { id: string; name: string };
 type Mode = "customer" | "vendor";
@@ -372,9 +373,33 @@ export function ReviewEditor({
                       </div>
                     )}
                     {line.match_source === "none" && !line.part_id && (
-                      <div className="text-[10px] text-rose-700 mt-1">
-                        no part match — pick one or reject
-                      </div>
+                      <>
+                        <div className="text-[10px] text-rose-700 mt-1">
+                          no part match — pick one, create new, or reject
+                        </div>
+                        {line.part_display.trim() && (
+                          <InlineCreatePart
+                            aliasPn={line.part_display.trim()}
+                            suggestedDescription={
+                              line.description ?? line.raw_text
+                            }
+                            aliasSourceType={
+                              mode === "customer" ? "customer" : "vendor"
+                            }
+                            aliasSourceName={
+                              picked?.name ?? vendorHint ?? null
+                            }
+                            onCreated={(part) =>
+                              update(idx, {
+                                part_id: part.id,
+                                part_display: part.internal_pn,
+                                description: part.description,
+                                accepted: true,
+                              })
+                            }
+                          />
+                        )}
+                      </>
                     )}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground italic max-w-[360px]">
