@@ -49,9 +49,12 @@ export function AppShell({
   }, []);
 
   return (
-    <div className="min-h-screen bg-background flex">
+    // h-screen (not min-h-screen) so the outer container is exactly viewport
+    // height; the inner <main> becomes the scroll container. Sidebar + topbar
+    // stay fixed regardless of how tall the page content is.
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Desktop sidebar — always visible from md up. */}
-      <div className="hidden md:flex">
+      <div className="hidden md:flex h-screen">
         <Sidebar reviewCount={reviewCount} user={user} company={company} />
       </div>
 

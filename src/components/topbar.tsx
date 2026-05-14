@@ -6,7 +6,6 @@ import { Menu, Plus, Search } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification-bell";
 import { NewCustomerDialog } from "@/app/(app)/customers/components/new-customer-dialog";
-import { NewPartDialog } from "@/app/(app)/parts/components/new-part-dialog";
 import { NewVendorDialog } from "@/app/(app)/vendors/components/new-vendor-dialog";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +17,7 @@ const STATIC_TITLES: Record<string, string> = {
   "/quotes/new": "New quote",
   "/review": "Review queue",
   "/parts": "Parts",
+  "/parts/new": "New part",
   "/parts/import": "Import parts",
   "/customers": "Customers",
   "/vendors": "Vendors",
@@ -41,7 +41,7 @@ function titleFor(pathname: string): string {
 }
 
 function ActionFor({ pathname }: { pathname: string }) {
-  if (pathname === "/quotes/new") return null;
+  if (pathname === "/quotes/new" || pathname === "/parts/new") return null;
 
   const segments = pathname.split("/").filter(Boolean);
   const top = "/" + (segments[0] ?? "");
@@ -64,7 +64,18 @@ function ActionFor({ pathname }: { pathname: string }) {
     case "/customers":
       return <NewCustomerDialog />;
     case "/parts":
-      return <NewPartDialog />;
+      return (
+        <Link
+          href="/parts/new"
+          className={cn(
+            buttonVariants(),
+            "h-10 rounded-full px-4 sm:px-5 gap-1.5",
+          )}
+        >
+          <Plus className="size-4" />
+          <span className="hidden sm:inline">New part</span>
+        </Link>
+      );
     case "/vendors":
       return <NewVendorDialog />;
     default:
