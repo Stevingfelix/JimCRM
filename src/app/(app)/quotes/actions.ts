@@ -31,11 +31,17 @@ export async function createQuote(
       .eq("is_default", true)
       .maybeSingle();
 
+    // Per client requirements: validity defaults to 30 days from today if
+    // not explicitly provided. Jim can override on the builder.
+    const validity =
+      parsed.data.validity_date ??
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
     const { data, error } = await supabase
       .from("quotes")
       .insert({
         customer_id: parsed.data.customer_id,
-        validity_date: parsed.data.validity_date ?? null,
+        validity_date: validity,
         customer_notes: parsed.data.customer_notes ?? null,
         internal_notes: parsed.data.internal_notes ?? null,
         status: "draft",

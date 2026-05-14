@@ -22,13 +22,20 @@ import { createQuote } from "../actions";
 
 type Customer = { id: string; name: string };
 
+// Default validity = today + 30 days (per Jim's requirements doc).
+function defaultValidity(): string {
+  return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+}
+
 export function NewQuoteDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Customer[]>([]);
   const [selected, setSelected] = useState<Customer | null>(null);
-  const [validity, setValidity] = useState("");
+  const [validity, setValidity] = useState(defaultValidity());
   const [customerNotes, setCustomerNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [pending, startTransition] = useTransition();
@@ -38,7 +45,7 @@ export function NewQuoteDialog() {
     setQuery("");
     setResults([]);
     setSelected(null);
-    setValidity("");
+    setValidity(defaultValidity());
     setCustomerNotes("");
     setInternalNotes("");
   };

@@ -18,6 +18,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createQuote } from "@/app/(app)/quotes/actions";
 
+// Default validity = today + 30 days (per Jim's requirements doc).
+function defaultValidity(): string {
+  return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+}
+
 export function NewQuoteDialog({
   customerId,
   customerName,
@@ -27,13 +34,13 @@ export function NewQuoteDialog({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [validity, setValidity] = useState("");
+  const [validity, setValidity] = useState(defaultValidity());
   const [customerNotes, setCustomerNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [pending, startTransition] = useTransition();
 
   const reset = () => {
-    setValidity("");
+    setValidity(defaultValidity());
     setCustomerNotes("");
     setInternalNotes("");
   };

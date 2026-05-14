@@ -40,6 +40,12 @@ export default async function PartsPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <a
+            href="/api/export/parts"
+            className="inline-flex h-9 items-center rounded-full border bg-background px-4 text-sm hover:bg-muted transition-colors"
+          >
+            Export CSV
+          </a>
           <Link
             href="/parts/import"
             className="inline-flex h-9 items-center rounded-full border bg-background px-4 text-sm hover:bg-muted transition-colors"
