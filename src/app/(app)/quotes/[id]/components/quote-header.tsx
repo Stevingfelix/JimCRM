@@ -16,10 +16,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatQuoteNumber } from "@/lib/format";
-import { softDeleteQuote, updateQuote, updateQuoteStatus } from "../../actions";
+import {
+  duplicateQuoteAndRedirect,
+  softDeleteQuote,
+  updateQuote,
+  updateQuoteStatus,
+} from "../../actions";
+import {
+  OutcomeReasonDialog,
+  type Outcome,
+} from "./outcome-reason-dialog";
 
 const STATUSES = ["draft", "sent", "won", "lost", "expired"] as const;
 type Status = (typeof STATUSES)[number];
+
+const TERMINAL_STATUSES = new Set<Status>(["won", "lost", "expired"]);
 
 type Props = {
   quote: {
@@ -41,6 +52,7 @@ export function QuoteHeader({ quote, templates }: Props) {
   const [templateId, setTemplateId] = useState(quote.template_id ?? "");
   const [pending, startTransition] = useTransition();
   const [statusPending, startStatus] = useTransition();
+  const [pendingOutcome, setPendingOutcome] = useState<Outcome | null>(null);
 
   const dirty =
     validity !== (quote.validity_date ?? "") ||
@@ -55,10 +67,6 @@ export function QuoteHeader({ quote, templates }: Props) {
         internal_notes: null,
         template_id: templateId || null,
       });
-      // NOTE: customer_notes/internal_notes get persisted by the notes section;
-      // the header only owns validity + template. We re-send nulls here only when
-      // the user hasn't edited notes — handled by sending current values from the
-      // server. For simplicity, the notes section calls updateQuote independently.
       if (!result.ok) {
         toast.error(result.error.message);
         return;
@@ -68,36 +76,50 @@ export function QuoteHeader({ quote, templates }: Props) {
     });
   };
 
-  const onStatusChange = (next: string | null) => {
-    if (!next) return;
-    const v = next as Status;
-    setStatus(v);
+  const applyStatus = (v: Status, outcomeReason: string | null) => {
     startStatus(async () => {
-      const result = await updateQuoteStatus({ id: quote.id, status: v });
+      const result = await updateQuoteStatus({
+        id: quote.id,
+        status: v,
+        outcome_reason: outcomeReason,
+      });
       if (!result.ok) {
         toast.error(result.error.message);
         setStatus(quote.status);
+        setPendingOutcome(null);
         return;
       }
+      setStatus(v);
+      setPendingOutcome(null);
       toast.success(`Status → ${v}`);
       router.refresh();
     });
   };
 
+  const onStatusChange = (next: string | null) => {
+    if (!next) return;
+    const v = next as Status;
+    if (TERMINAL_STATUSES.has(v)) {
+      // Prompt for reason before committing the status change.
+      setPendingOutcome(v as Outcome);
+      return;
+    }
+    setStatus(v);
+    applyStatus(v, null);
+  };
+
   const onSend = () => {
-    // Render PDF (opens in a new tab) and flip status to sent.
-    // Email send via Gmail is deferred — gmail.send is a separate restricted
-    // scope; Jim can download the PDF and send manually for now.
     window.open(`/api/quotes/${quote.id}/pdf`, "_blank");
-    startStatus(async () => {
-      const result = await updateQuoteStatus({ id: quote.id, status: "sent" });
-      if (!result.ok) {
+    applyStatus("sent", null);
+  };
+
+  const onDuplicate = () => {
+    startTransition(async () => {
+      const result = await duplicateQuoteAndRedirect({ source_id: quote.id });
+      if (result && !result.ok) {
         toast.error(result.error.message);
-        return;
       }
-      setStatus("sent");
-      toast.success("PDF generated · status → sent");
-      router.refresh();
+      // success → server redirect handles navigation
     });
   };
 
@@ -138,6 +160,14 @@ export function QuoteHeader({ quote, templates }: Props) {
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={onSend}>
             Send ↗
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onDuplicate}
+            disabled={pending}
+          >
+            Duplicate
           </Button>
           <Button
             size="sm"
@@ -202,6 +232,16 @@ export function QuoteHeader({ quote, templates }: Props) {
           </Select>
         </div>
       </div>
+
+      <OutcomeReasonDialog
+        open={pendingOutcome !== null}
+        outcome={pendingOutcome}
+        pending={statusPending}
+        onCancel={() => setPendingOutcome(null)}
+        onConfirm={(reason) =>
+          pendingOutcome && applyStatus(pendingOutcome, reason)
+        }
+      />
     </div>
   );
 }

@@ -625,6 +625,8 @@ export type Database = {
           deleted_at: string | null
           id: string
           internal_notes: string | null
+          outcome_at: string | null
+          outcome_reason: string | null
           quote_number: number
           sent_at: string | null
           status: Database["public"]["Enums"]["quote_status"]
@@ -641,6 +643,8 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           internal_notes?: string | null
+          outcome_at?: string | null
+          outcome_reason?: string | null
           quote_number?: number
           sent_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
@@ -657,6 +661,8 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           internal_notes?: string | null
+          outcome_at?: string | null
+          outcome_reason?: string | null
           quote_number?: number
           sent_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]

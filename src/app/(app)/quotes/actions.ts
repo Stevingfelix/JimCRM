@@ -99,7 +99,10 @@ export async function updateQuote(
 const UpdateStatusSchema = z.object({
   id: z.string().uuid(),
   status: z.enum(QUOTE_STATUSES),
+  outcome_reason: z.string().trim().max(500).optional().nullable(),
 });
+
+const TERMINAL_STATUSES = new Set(["won", "lost", "expired"]);
 
 export async function updateQuoteStatus(
   input: z.input<typeof UpdateStatusSchema>,
@@ -109,14 +112,18 @@ export async function updateQuoteStatus(
   try {
     const supabase = createClient();
     const userId = await getCurrentUserId();
+    const now = new Date().toISOString();
+    const terminal = TERMINAL_STATUSES.has(parsed.data.status);
     const { error } = await supabase
       .from("quotes")
       .update({
         status: parsed.data.status,
         updated_by: userId,
-        ...(parsed.data.status === "sent"
-          ? { sent_at: new Date().toISOString() }
-          : {}),
+        ...(parsed.data.status === "sent" ? { sent_at: now } : {}),
+        // Won/lost/expired: record outcome reason + when. Going back to
+        // draft/sent clears the prior outcome data.
+        outcome_reason: terminal ? parsed.data.outcome_reason ?? null : null,
+        outcome_at: terminal ? now : null,
       })
       .eq("id", parsed.data.id);
     if (error) return err(error.code ?? "db_error", error.message);
@@ -126,6 +133,93 @@ export async function updateQuoteStatus(
   } catch (e) {
     return fromException(e);
   }
+}
+
+const DuplicateQuoteSchema = z.object({
+  source_id: z.string().uuid(),
+});
+
+export async function duplicateQuote(
+  input: z.input<typeof DuplicateQuoteSchema>,
+): Promise<ActionResult<{ id: string }>> {
+  const parsed = DuplicateQuoteSchema.safeParse(input);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+  try {
+    const supabase = createClient();
+    const userId = await getCurrentUserId();
+
+    const { data: source, error: srcErr } = await supabase
+      .from("quotes")
+      .select(
+        "customer_id, customer_notes, internal_notes, template_id",
+      )
+      .eq("id", parsed.data.source_id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (srcErr) return err(srcErr.code ?? "db_error", srcErr.message);
+    if (!source) return err("not_found", "Source quote not found");
+
+    const { data: lines, error: linesErr } = await supabase
+      .from("quote_lines")
+      .select(
+        "part_id, qty, unit_price, line_notes_internal, line_notes_customer, position",
+      )
+      .eq("quote_id", parsed.data.source_id)
+      .order("position", { ascending: true });
+    if (linesErr) return err(linesErr.code ?? "db_error", linesErr.message);
+
+    // New quote: always draft, validity blank (Jim picks fresh), no sent_at.
+    const { data: newQuote, error: insErr } = await supabase
+      .from("quotes")
+      .insert({
+        customer_id: source.customer_id,
+        status: "draft",
+        validity_date: null,
+        customer_notes: source.customer_notes,
+        internal_notes: source.internal_notes,
+        template_id: source.template_id,
+        created_by: userId,
+        updated_by: userId,
+      })
+      .select("id")
+      .single();
+    if (insErr) return err(insErr.code ?? "db_error", insErr.message);
+
+    // Copy lines but drop ai_suggested_price / override_reason so the new
+    // quote gets fresh suggestions next time the user runs them.
+    if (lines && lines.length > 0) {
+      const payload = lines.map((l) => ({
+        quote_id: newQuote.id,
+        part_id: l.part_id,
+        qty: l.qty,
+        unit_price: l.unit_price,
+        line_notes_internal: l.line_notes_internal,
+        line_notes_customer: l.line_notes_customer,
+        position: l.position,
+        created_by: userId,
+        updated_by: userId,
+      }));
+      const { error: linesInsErr } = await supabase
+        .from("quote_lines")
+        .insert(payload);
+      if (linesInsErr)
+        return err(linesInsErr.code ?? "db_error", linesInsErr.message);
+    }
+
+    revalidatePath("/quotes");
+    revalidatePath(`/customers/${source.customer_id}`);
+    return ok({ id: newQuote.id });
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
+export async function duplicateQuoteAndRedirect(
+  input: z.input<typeof DuplicateQuoteSchema>,
+) {
+  const result = await duplicateQuote(input);
+  if (result.ok) redirect(`/quotes/${result.data.id}`);
+  return result;
 }
 
 const AddLineSchema = z.object({
