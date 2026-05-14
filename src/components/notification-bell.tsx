@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell } from "lucide-react";
+import { Bell, Info, FileSearch, AlertTriangle, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -17,16 +17,56 @@ type Props = {
   initial: NotificationsPayload;
 };
 
-function timeAgo(iso: string | null): string {
-  if (!iso) return "—";
-  const ms = Date.now() - Date.parse(iso);
-  const m = Math.floor(ms / 60_000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return `${d}d ago`;
+function formatDateChip(iso: string | null): string {
+  if (!iso) return "";
+  return new Date(iso)
+    .toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    })
+    .toUpperCase();
+}
+
+// Map an email event to a presentable card: title + body + icon. Keeps the
+// dropdown agnostic of source-type details.
+function titleFor(e: NotificationEvent): string {
+  if (e.needs_review) return "Inbound email needs review";
+  if (e.source_type === "customer_quote_request") {
+    return "New quote request";
+  }
+  if (e.source_type === "vendor_quote_reply") {
+    return "Vendor pricing received";
+  }
+  return e.subject ?? "Inbound email";
+}
+
+function bodyFor(e: NotificationEvent): string {
+  const who = e.sender_name || e.sender_email || "Unknown sender";
+  if (e.needs_review) {
+    return `From ${who} — ${e.line_count} line${e.line_count === 1 ? "" : "s"} awaiting review.`;
+  }
+  if (e.source_type === "customer_quote_request") {
+    return `${who} asked for pricing on ${e.line_count} item${e.line_count === 1 ? "" : "s"}.`;
+  }
+  if (e.source_type === "vendor_quote_reply") {
+    return `${who} replied with ${e.line_count} pricing line${e.line_count === 1 ? "" : "s"}.`;
+  }
+  return e.subject ?? `From ${who}`;
+}
+
+function IconFor({ e }: { e: NotificationEvent }) {
+  let Icon = Info;
+  if (e.needs_review) Icon = AlertTriangle;
+  else if (e.source_type === "customer_quote_request") Icon = FileSearch;
+  else if (e.source_type === "vendor_quote_reply") Icon = Mail;
+  return (
+    <div className="size-9 rounded-full bg-brand-gradient-soft text-primary grid place-items-center shrink-0">
+      <Icon className="size-4" />
+    </div>
+  );
 }
 
 export function NotificationBell({ initial }: Props) {
@@ -38,8 +78,6 @@ export function NotificationBell({ initial }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastSeenAtRef = useRef<string | null>(initial.last_seen_at);
 
-  // Realtime: on any change to email_events, refetch the bell payload
-  // (any client component can call a server action, including for reads).
   const refetch = useCallback(async () => {
     try {
       const res = await fetch("/api/notifications/recent", {
@@ -86,102 +124,108 @@ export function NotificationBell({ initial }: Props) {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
-  const onToggle = () => {
-    const next = !open;
-    setOpen(next);
-    if (next && unread > 0) {
-      // Optimistic: clear locally; server action persists.
-      setUnread(0);
-      startMark(async () => {
-        const result = await markAllNotificationsSeen();
-        if (!result.ok) {
-          toast.error(result.error.message);
-          // restore — keep the count visible
-          setUnread(unread);
-          return;
-        }
-        router.refresh();
-      });
-    }
-  };
+  function handleMarkAll() {
+    if (unread === 0) return;
+    const before = unread;
+    setUnread(0);
+    startMark(async () => {
+      const result = await markAllNotificationsSeen();
+      if (!result.ok) {
+        toast.error(result.error.message);
+        setUnread(before);
+        return;
+      }
+      router.refresh();
+    });
+  }
 
   return (
     <div ref={containerRef} className="relative">
       <button
         type="button"
-        onClick={onToggle}
+        onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"
         className="size-9 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted relative"
       >
         <Bell className="size-4" />
         {unread > 0 && (
-          <span className="absolute top-1 right-1 size-4 rounded-full bg-brand-gradient text-primary-foreground text-[10px] font-semibold grid place-items-center shadow-sm">
+          <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-semibold grid place-items-center shadow-sm">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-[380px] rounded-xl border bg-card shadow-lg z-50 overflow-hidden">
-          <div className="px-4 py-3 border-b flex items-center justify-between">
-            <div className="text-sm font-semibold">Notifications</div>
-            <Link
-              href="/review"
-              className="text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => setOpen(false)}
+        <div
+          className={cn(
+            // Anchor to right on desktop; on mobile, shift left so it stays
+            // on-screen for narrow viewports.
+            "absolute z-50 mt-2 rounded-2xl border bg-card shadow-xl overflow-hidden",
+            "right-0 w-[360px] sm:w-[380px]",
+            "max-w-[calc(100vw-1.5rem)]",
+          )}
+        >
+          <div className="px-5 pt-4 pb-3 flex items-center justify-between">
+            <h3 className="text-base font-semibold tracking-tight">
+              Notifications
+            </h3>
+            <button
+              type="button"
+              onClick={handleMarkAll}
+              disabled={unread === 0}
+              className={cn(
+                "text-sm font-medium transition-colors",
+                unread > 0
+                  ? "text-primary hover:underline"
+                  : "text-muted-foreground/70 cursor-default",
+              )}
             >
-              View all →
-            </Link>
+              Mark all as read
+            </button>
           </div>
-          <ul className="divide-y max-h-[420px] overflow-auto">
+          <ul className="max-h-[420px] overflow-auto px-3 pb-3 space-y-2">
             {recent.length === 0 ? (
-              <li className="px-4 py-6 text-center text-sm text-muted-foreground">
-                Nothing here yet. New emails from Gmail will show up
-                automatically.
+              <li className="px-3 py-8 text-center text-sm text-muted-foreground">
+                Nothing here yet. New emails from Gmail show up automatically.
               </li>
             ) : (
-              recent.map((e) => (
-                <li key={e.id}>
-                  <Link
-                    href={
-                      e.needs_review ? `/review/${e.id}` : "/review"
-                    }
-                    onClick={() => setOpen(false)}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
-                  >
-                    <div
-                      className={cn(
-                        "size-2 rounded-full mt-1.5 shrink-0",
-                        lastSeenAtRef.current &&
-                          e.received_at &&
-                          Date.parse(e.received_at) >
-                            Date.parse(lastSeenAtRef.current)
-                          ? "bg-brand-gradient"
-                          : "bg-transparent",
-                      )}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">
-                        {e.subject ?? "(no subject)"}
-                      </div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {e.sender_name || e.sender_email || "Unknown sender"}
-                        {e.source_type && (
-                          <>
-                            {" · "}
-                            <span className="capitalize">
-                              {e.source_type.replace(/_/g, " ")}
-                            </span>
-                          </>
+              recent.map((e) => {
+                const isUnread =
+                  !!e.received_at &&
+                  (!lastSeenAtRef.current ||
+                    Date.parse(e.received_at) >
+                      Date.parse(lastSeenAtRef.current));
+                return (
+                  <li key={e.id}>
+                    <Link
+                      href={e.needs_review ? `/review/${e.id}` : "/review"}
+                      onClick={() => setOpen(false)}
+                      className="block rounded-xl p-3 bg-background hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex items-start gap-3">
+                        <IconFor e={e} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold leading-snug">
+                            {titleFor(e)}
+                          </div>
+                          <div className="text-sm text-muted-foreground mt-0.5">
+                            {bodyFor(e)}
+                          </div>
+                          <div className="text-[10px] tracking-wider text-muted-foreground mt-1.5 font-medium">
+                            {formatDateChip(e.received_at)}
+                          </div>
+                        </div>
+                        {isUnread && (
+                          <span
+                            aria-hidden
+                            className="size-2 rounded-full bg-primary shrink-0 mt-2"
+                          />
                         )}
                       </div>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
-                      {timeAgo(e.received_at)}
-                    </div>
-                  </Link>
-                </li>
-              ))
+                    </Link>
+                  </li>
+                );
+              })
             )}
           </ul>
         </div>

@@ -31,20 +31,21 @@ export default async function CustomersPage({
   const hasFilter = Boolean(searchParams.q) || filter !== "all";
 
   return (
-    <div className="px-8 py-8 max-w-7xl">
+    <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl">
       <div className="rounded-xl border bg-card overflow-hidden">
-        {/* Header bar: title + search + filter + export */}
-        <div className="flex items-center gap-4 flex-wrap px-5 py-4">
+        {/* Header bar: title + search + filter + export. Stacks on mobile,
+            single row from md+. */}
+        <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 px-4 sm:px-5 py-4">
           <h2 className="text-base font-semibold tracking-tight shrink-0">
             Active Customers
           </h2>
           <CustomersSearch />
           <a
             href="/api/export/customers"
-            className="inline-flex h-9 items-center gap-1.5 rounded-full border bg-background px-4 text-sm hover:bg-muted transition-colors shrink-0"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border bg-background px-4 text-sm hover:bg-muted transition-colors shrink-0"
           >
             <Download className="size-3.5" />
-            Export as CSV
+            <span className="whitespace-nowrap">Export as CSV</span>
           </a>
         </div>
 

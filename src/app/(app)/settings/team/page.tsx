@@ -70,7 +70,7 @@ export default async function TeamPage() {
     }));
 
   return (
-    <div className="px-8 py-8 space-y-5 max-w-5xl">
+    <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5 max-w-5xl">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Invite teammates to quote, review extractions, and manage parts.

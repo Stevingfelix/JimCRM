@@ -28,7 +28,7 @@ export default async function ExportProfilesPage() {
     .order("created_at", { ascending: true });
 
   return (
-    <div className="px-8 py-8 space-y-5 max-w-5xl">
+    <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5 max-w-5xl">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Configure the column names and order to match Jim&apos;s ERP&apos;s import

@@ -3,7 +3,7 @@ import { ImportClient } from "./components/import-client";
 
 export default function PartsImportPage() {
   return (
-    <div className="px-8 py-8 space-y-5 max-w-5xl">
+    <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5 max-w-5xl">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Paste or upload a CSV to create parts in bulk. Aliases are imported

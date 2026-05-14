@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Plus, Search } from "lucide-react";
+import { Menu, Plus, Search } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification-bell";
 import { NewCustomerDialog } from "@/app/(app)/customers/components/new-customer-dialog";
@@ -39,11 +39,7 @@ function titleFor(pathname: string): string {
   return "";
 }
 
-// Pick the right "+ New X" action for the current route. Quotes uses a full
-// page (link); the others still open a dialog in place. Returns null on
-// routes where a new action doesn't fit (Review / Analytics / Settings).
 function ActionFor({ pathname }: { pathname: string }) {
-  // On the new-quote page itself, no CTA.
   if (pathname === "/quotes/new") return null;
 
   const segments = pathname.split("/").filter(Boolean);
@@ -55,10 +51,13 @@ function ActionFor({ pathname }: { pathname: string }) {
       return (
         <Link
           href="/quotes/new"
-          className={cn(buttonVariants(), "h-10 rounded-full px-5")}
+          className={cn(
+            buttonVariants(),
+            "h-10 rounded-full px-4 sm:px-5 gap-1.5",
+          )}
         >
-          <Plus className="size-4 mr-1.5" />
-          New quote
+          <Plus className="size-4" />
+          <span className="hidden sm:inline">New quote</span>
         </Link>
       );
     case "/customers":
@@ -76,36 +75,59 @@ function openCommandPalette() {
   window.dispatchEvent(new CustomEvent("open-command-palette"));
 }
 
+function openMobileNav() {
+  window.dispatchEvent(new CustomEvent("open-mobile-nav"));
+}
+
 export function TopBar({ notifications }: { notifications: Notif }) {
   const pathname = usePathname();
   const title = titleFor(pathname);
 
   return (
-    <header className="h-16 border-b bg-card px-6 flex items-center gap-4 shrink-0">
+    <header className="h-16 border-b bg-card px-4 sm:px-6 flex items-center gap-2 sm:gap-4 shrink-0">
+      {/* Hamburger — mobile only */}
+      <button
+        type="button"
+        onClick={openMobileNav}
+        aria-label="Open navigation"
+        className="md:hidden size-9 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
+      >
+        <Menu className="size-5" />
+      </button>
+
       <div className="min-w-0 shrink-0">
-        <h1 className="text-xl font-semibold tracking-tight truncate">
+        <h1 className="text-base sm:text-xl font-semibold tracking-tight truncate">
           {title}
         </h1>
       </div>
 
-      <div className="flex-1 flex justify-center px-4">
+      {/* Search — full pill on md+, icon-only on mobile */}
+      <div className="flex-1 flex justify-end md:justify-center md:px-4">
         <button
           type="button"
           onClick={openCommandPalette}
-          className="w-full max-w-md flex items-center gap-2 h-10 rounded-full border bg-background/60 px-4 text-sm text-muted-foreground hover:bg-muted transition-colors"
+          aria-label="Search (⌘K)"
+          className="md:hidden size-9 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
+        >
+          <Search className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={openCommandPalette}
+          className="hidden md:flex w-full max-w-md items-center gap-2 h-10 rounded-full border bg-background/60 px-4 text-sm text-muted-foreground hover:bg-muted transition-colors"
           aria-label="Search (⌘K)"
         >
           <Search className="size-4 shrink-0" />
           <span className="flex-1 text-left truncate">
             Search quotes, parts, customers…
           </span>
-          <kbd className="hidden sm:inline font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+          <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
             ⌘K
           </kbd>
         </button>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         <NotificationBell initial={notifications} />
         <ActionFor pathname={pathname} />
       </div>

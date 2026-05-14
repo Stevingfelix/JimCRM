@@ -124,20 +124,19 @@ export async function listCustomers({
   }
 
   const customerIds = rows.map((r) => r.id);
-  const [contactsRes, quotesRes] = await Promise.all([
+  // Aggregates are computed by the customer_quote_stats view in Postgres —
+  // one row per customer with quote_count, last_quote_at, total_quoted,
+  // total_won. We just look up the rows for this page.
+  const [contactsRes, statsRes] = await Promise.all([
     supabase
       .from("customer_contacts")
       .select("customer_id, name, email")
       .in("customer_id", customerIds)
       .order("created_at", { ascending: true }),
-    supabase
-      .from("quotes")
-      .select(
-        "customer_id, status, created_at, quote_lines(qty, unit_price)",
-      )
-      .in("customer_id", customerIds)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from as any)("customer_quote_stats")
+      .select("customer_id, quote_count, last_quote_at, total_quoted, total_won")
+      .in("customer_id", customerIds),
   ]);
 
   const primaryEmail = new Map<string, string>();
@@ -151,44 +150,32 @@ export async function listCustomers({
     }
   });
 
-  type QRow = {
+  type StatsRow = {
     customer_id: string;
-    status: string;
-    created_at: string;
-    quote_lines: Array<{ qty: number; unit_price: number | null }>;
+    quote_count: number | null;
+    last_quote_at: string | null;
+    total_quoted: number | string | null;
+    total_won: number | string | null;
   };
-
-  const counts = new Map<string, number>();
-  const lastAt = new Map<string, string>();
-  const totalQuoted = new Map<string, number>();
-  const totalWon = new Map<string, number>();
-  (quotesRes.data as unknown as QRow[] | null)?.forEach((q) => {
-    counts.set(q.customer_id, (counts.get(q.customer_id) ?? 0) + 1);
-    if (!lastAt.has(q.customer_id)) lastAt.set(q.customer_id, q.created_at);
-    const sum = q.quote_lines.reduce<number>((acc, l) => {
-      if (l.unit_price == null) return acc;
-      return acc + l.qty * l.unit_price;
-    }, 0);
-    totalQuoted.set(
-      q.customer_id,
-      (totalQuoted.get(q.customer_id) ?? 0) + sum,
-    );
-    if (q.status === "won") {
-      totalWon.set(q.customer_id, (totalWon.get(q.customer_id) ?? 0) + sum);
-    }
+  const stats = new Map<string, StatsRow>();
+  (statsRes.data as StatsRow[] | null)?.forEach((s) => {
+    stats.set(s.customer_id, s);
   });
 
   return {
-    rows: rows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      primary_contact_name: primaryContactName.get(r.id) ?? null,
-      primary_email: primaryEmail.get(r.id) ?? null,
-      quote_count: counts.get(r.id) ?? 0,
-      last_quote_at: lastAt.get(r.id) ?? null,
-      total_quoted: totalQuoted.get(r.id) ?? 0,
-      total_won: totalWon.get(r.id) ?? 0,
-    })),
+    rows: rows.map((r) => {
+      const s = stats.get(r.id);
+      return {
+        id: r.id,
+        name: r.name,
+        primary_contact_name: primaryContactName.get(r.id) ?? null,
+        primary_email: primaryEmail.get(r.id) ?? null,
+        quote_count: s?.quote_count ?? 0,
+        last_quote_at: s?.last_quote_at ?? null,
+        total_quoted: Number(s?.total_quoted ?? 0),
+        total_won: Number(s?.total_won ?? 0),
+      };
+    }),
     total: count ?? rows.length,
     page,
     pageSize: PAGE_SIZE,

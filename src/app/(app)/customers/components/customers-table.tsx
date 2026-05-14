@@ -75,8 +75,8 @@ export function CustomersTable({
 
   return (
     <>
-      <div className="border-t">
-        <table className="w-full text-sm">
+      <div className="border-t overflow-x-auto">
+        <table className="w-full text-sm min-w-[760px]">
           <thead>
             <tr className="text-left text-[10px] font-semibold tracking-wider uppercase text-muted-foreground border-b">
               <th className="w-10 px-4 py-3">

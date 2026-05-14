@@ -24,7 +24,7 @@ export default async function AnalyticsPage({
   );
 
   return (
-    <div className="px-8 py-8 space-y-6 max-w-7xl">
+    <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 max-w-7xl">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Quote activity over the last {data.range_days} days.

@@ -24,7 +24,7 @@ export default async function ReviewPage({
   ]);
 
   return (
-    <div className="px-8 py-8 space-y-5 max-w-7xl">
+    <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5 max-w-7xl">
       <p className="text-sm text-muted-foreground">
         {rows.length} item{rows.length === 1 ? "" : "s"} need review
       </p>

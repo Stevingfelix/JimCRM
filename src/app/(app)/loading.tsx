@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 // Dashboard loading skeleton — 4 KPI tiles + 2 activity feeds.
 export default function DashboardLoading() {
   return (
-    <div className="px-8 py-8 space-y-6 max-w-7xl">
+    <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 max-w-7xl">
       <div className="space-y-2">
         <Skeleton className="h-7 w-40" />
         <Skeleton className="h-4 w-64" />

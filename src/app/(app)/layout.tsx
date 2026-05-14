@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/sidebar";
-import { TopBar } from "@/components/topbar";
+import { AppShell } from "@/components/app-shell";
 import { CommandPalette } from "@/components/command-palette";
 import { Toaster } from "@/components/ui/sonner";
 import { getCurrentUser } from "@/lib/auth";
@@ -31,8 +30,8 @@ export default async function AppLayout({
   ]);
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <Sidebar
+    <>
+      <AppShell
         reviewCount={reviewCount}
         user={{
           email: user.email,
@@ -43,13 +42,12 @@ export default async function AppLayout({
           name: company.company_name,
           logo_url: company.logo_url,
         }}
-      />
-      <div className="flex-1 min-w-0 flex flex-col">
-        <TopBar notifications={notifications} />
-        <main className="flex-1 min-w-0 overflow-auto">{children}</main>
-      </div>
+        notifications={notifications}
+      >
+        {children}
+      </AppShell>
       <Toaster richColors closeButton />
       <CommandPalette />
-    </div>
+    </>
   );
 }
