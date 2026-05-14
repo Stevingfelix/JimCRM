@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatQuoteNumber } from "@/lib/format";
 
-// ERP-import CSV. Schema is a sensible default until Jim provides his actual
-// ERP column spec; swap column names + ordering here to match without
-// touching anything else. See specs/MVP_BRIEF.md §2.4.
-const COLUMNS = [
+// Default column set + order. Used when no profile is specified or the
+// "default" profile exists with empty columns_order.
+const DEFAULT_COLUMNS = [
   "quote_number",
   "customer_name",
   "customer_id",
@@ -21,19 +20,20 @@ const COLUMNS = [
   "line_total",
 ] as const;
 
+type ColumnKey = (typeof DEFAULT_COLUMNS)[number];
+
 type Filters = {
   quote_id?: string;
-  from?: string; // YYYY-MM-DD
+  from?: string;
   to?: string;
   new_parts_only?: boolean;
+  profile?: string;
 };
 
 function csvEscape(v: unknown): string {
   if (v == null) return "";
   const s = String(v);
-  if (/[",\n\r]/.test(s)) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }
 
@@ -46,10 +46,46 @@ export async function GET(req: NextRequest) {
     from: url.searchParams.get("from") ?? undefined,
     to: url.searchParams.get("to") ?? undefined,
     new_parts_only: url.searchParams.get("new_parts_only") === "1",
+    profile: url.searchParams.get("profile") ?? undefined,
   };
 
   try {
     const supabase = createAdminClient();
+
+    // Resolve which profile to use.
+    let columnMap: Record<string, string> = {};
+    let columnsOrder: string[] = [...DEFAULT_COLUMNS];
+    let profileName = "default";
+
+    if (filters.profile) {
+      const { data: profile } = await supabase
+        .from("csv_export_profiles")
+        .select("name, column_map, columns_order")
+        .eq("name", filters.profile)
+        .maybeSingle();
+      if (profile) {
+        profileName = profile.name;
+        columnMap = (profile.column_map as Record<string, string>) ?? {};
+        const ord = profile.columns_order ?? [];
+        if (Array.isArray(ord) && ord.length > 0) columnsOrder = ord;
+      }
+    } else {
+      // Fall back to the default profile if one is marked default.
+      const { data: profile } = await supabase
+        .from("csv_export_profiles")
+        .select("name, column_map, columns_order")
+        .eq("is_default", true)
+        .maybeSingle();
+      if (profile) {
+        profileName = profile.name;
+        columnMap = (profile.column_map as Record<string, string>) ?? {};
+        const ord = profile.columns_order ?? [];
+        if (Array.isArray(ord) && ord.length > 0) columnsOrder = ord;
+      }
+    }
+
+    // Build the header line from columnsOrder + columnMap.
+    const headerCells = columnsOrder.map((k) => columnMap[k] ?? k);
 
     let query = supabase
       .from("quotes")
@@ -87,11 +123,10 @@ export async function GET(req: NextRequest) {
     };
 
     const rows: string[] = [];
-    rows.push(COLUMNS.join(","));
+    rows.push(headerCells.join(","));
 
     const cutoff = filters.new_parts_only
-      ? // "new parts" = parts whose first quote line is in this export window
-        new Date(filters.from ?? "1970-01-01")
+      ? new Date(filters.from ?? "1970-01-01")
       : null;
 
     for (const q of (data ?? []) as unknown as Row[]) {
@@ -107,32 +142,33 @@ export async function GET(req: NextRequest) {
         }
         const lineTotal =
           l.unit_price != null ? (l.qty * l.unit_price).toFixed(4) : "";
-        rows.push(
-          [
-            formatQuoteNumber(q.quote_number),
-            q.customers.name,
-            q.customer_id,
-            q.status,
-            q.created_at,
-            q.sent_at ?? "",
-            q.validity_date ?? "",
-            l.position,
-            l.parts?.internal_pn ?? "",
-            l.parts?.description ?? "",
-            l.qty,
-            l.unit_price ?? "",
-            lineTotal,
-          ]
-            .map(csvEscape)
-            .join(","),
-        );
+
+        // Build per-column values from the key set.
+        const values: Record<ColumnKey, string | number> = {
+          quote_number: formatQuoteNumber(q.quote_number),
+          customer_name: q.customers.name,
+          customer_id: q.customer_id,
+          status: q.status,
+          quote_created_at: q.created_at,
+          quote_sent_at: q.sent_at ?? "",
+          validity_date: q.validity_date ?? "",
+          line_position: l.position,
+          internal_pn: l.parts?.internal_pn ?? "",
+          description: l.parts?.description ?? "",
+          qty: l.qty,
+          unit_price: l.unit_price ?? "",
+          line_total: lineTotal,
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cells = columnsOrder.map((k) => (values as any)[k] ?? "");
+        rows.push(cells.map(csvEscape).join(","));
       }
     }
 
     const body = rows.join("\n") + "\n";
     const filename = filters.quote_id
-      ? `quote-${filters.quote_id.slice(0, 8)}.csv`
-      : `erp-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      ? `quote-${filters.quote_id.slice(0, 8)}-${profileName}.csv`
+      : `erp-export-${new Date().toISOString().slice(0, 10)}-${profileName}.csv`;
 
     return new NextResponse(body, {
       status: 200,

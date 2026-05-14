@@ -17,7 +17,16 @@ export default async function QuoteDetailPage({
 
   return (
     <div className="px-6 py-6 space-y-6 max-w-6xl">
-      <QuoteHeader quote={detail.quote} templates={detail.templates} />
+      <QuoteHeader
+        quote={detail.quote}
+        templates={detail.templates}
+        lines={detail.lines.map((l) => ({
+          part_id: l.part_id,
+          part_internal_pn: l.part_internal_pn,
+          part_description: l.part_description,
+          qty: l.qty,
+        }))}
+      />
 
       <Separator />
 

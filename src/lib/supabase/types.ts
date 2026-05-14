@@ -69,6 +69,42 @@ export type Database = {
         }
         Relationships: []
       }
+      csv_export_profiles: {
+        Row: {
+          column_map: Json
+          columns_order: string[]
+          created_at: string
+          created_by: string | null
+          id: string
+          is_default: boolean
+          name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          column_map?: Json
+          columns_order?: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          column_map?: Json
+          columns_order?: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       customer_contacts: {
         Row: {
           created_at: string
@@ -224,9 +260,11 @@ export type Database = {
           encrypted_refresh_token: string
           id: string
           is_active: boolean
+          last_history_id: string | null
           last_polled_at: string | null
           updated_at: string
           updated_by: string | null
+          watch_expiration: string | null
           watched_label: string
         }
         Insert: {
@@ -238,9 +276,11 @@ export type Database = {
           encrypted_refresh_token: string
           id?: string
           is_active?: boolean
+          last_history_id?: string | null
           last_polled_at?: string | null
           updated_at?: string
           updated_by?: string | null
+          watch_expiration?: string | null
           watched_label?: string
         }
         Update: {
@@ -252,9 +292,11 @@ export type Database = {
           encrypted_refresh_token?: string
           id?: string
           is_active?: boolean
+          last_history_id?: string | null
           last_polled_at?: string | null
           updated_at?: string
           updated_by?: string | null
+          watch_expiration?: string | null
           watched_label?: string
         }
         Relationships: []
@@ -404,6 +446,7 @@ export type Database = {
           id: string
           internal_notes: string | null
           internal_pn: string
+          target_margin_pct: number
           updated_at: string
           updated_by: string | null
         }
@@ -415,6 +458,7 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           internal_pn: string
+          target_margin_pct?: number
           updated_at?: string
           updated_by?: string | null
         }
@@ -426,6 +470,7 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           internal_pn?: string
+          target_margin_pct?: number
           updated_at?: string
           updated_by?: string | null
         }
@@ -841,6 +886,72 @@ export type Database = {
           },
           {
             foreignKeyName: "vendor_quotes_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_rfqs: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          part_ids: string[]
+          quote_id: string | null
+          reply_at: string | null
+          reply_vendor_quote_ids: string[]
+          sent_at: string | null
+          status: string
+          subject: string
+          updated_at: string
+          updated_by: string | null
+          vendor_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          part_ids?: string[]
+          quote_id?: string | null
+          reply_at?: string | null
+          reply_vendor_quote_ids?: string[]
+          sent_at?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+          updated_by?: string | null
+          vendor_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          part_ids?: string[]
+          quote_id?: string | null
+          reply_at?: string | null
+          reply_vendor_quote_ids?: string[]
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          updated_by?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_rfqs_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_rfqs_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"

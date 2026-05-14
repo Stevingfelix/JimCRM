@@ -104,7 +104,7 @@ export async function pollGmail(): Promise<PollResult> {
   };
 }
 
-async function processMessage(
+export async function processMessage(
   msg: ParsedMessage,
   label: string,
   accessToken: string,

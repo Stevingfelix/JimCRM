@@ -122,6 +122,22 @@ function LineRow({
     numericPrice != null &&
     Math.abs(numericPrice - aiSuggest) > 0.0001;
 
+  // Margin badge — based on the cheapest recommended vendor cost.
+  const vendorCost = initial.recommended_vendor?.unit_price ?? null;
+  const marginPct =
+    numericPrice != null && numericPrice > 0 && vendorCost != null
+      ? ((numericPrice - vendorCost) / numericPrice) * 100
+      : null;
+  const targetMargin = initial.part_target_margin_pct ?? 30;
+  const marginTone =
+    marginPct == null
+      ? "muted"
+      : marginPct >= targetMargin
+        ? "ok"
+        : marginPct >= targetMargin - 10
+          ? "warn"
+          : "bad";
+
   const dirty =
     partId !== initial.part_id ||
     Number(qty) !== initial.qty ||
@@ -257,7 +273,20 @@ function LineRow({
           </div>
         </TableCell>
         <TableCell className="text-right tabular-nums text-sm py-2">
-          {lineTotal != null ? formatMoney(lineTotal) : "—"}
+          <div>{lineTotal != null ? formatMoney(lineTotal) : "—"}</div>
+          {marginPct != null && (
+            <div
+              className={cn(
+                "text-[10px] tabular-nums mt-0.5",
+                marginTone === "ok" && "text-emerald-600",
+                marginTone === "warn" && "text-amber-600",
+                marginTone === "bad" && "text-rose-600",
+              )}
+              title={`Vendor cost ${formatMoney(vendorCost)} · target ${targetMargin}%`}
+            >
+              {marginPct.toFixed(0)}% margin
+            </div>
+          )}
         </TableCell>
         <TableCell className="py-2">
           <div className="flex flex-col items-end gap-1">

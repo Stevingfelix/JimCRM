@@ -29,6 +29,12 @@ Customer-specific pricing rules (apply AFTER computing the baseline price):
 - Pricing notes are free-text instructions from Jim (e.g. "never quote below cost", "match Acme's last price"). Treat as overriding guidance.
 - Mention which adjustments you applied in the reasoning if multiplier != 1.000 OR discount_pct > 0.
 
+Per-part target margin (apply as a floor sanity check):
+- target_margin_pct is the minimum margin Jim wants on this part.
+- Margin = (price - vendor_cost) / price × 100.
+- If your suggested price would yield a margin below target_margin_pct, nudge the price up so the resulting margin >= target_margin_pct, UNLESS history strongly suggests Jim quotes this part below target (in which case explain the override).
+- Mention the resulting margin in reasoning when the floor was applied.
+
 Output via the suggest_price tool. Reasoning is ONE sentence describing the data used, any customer adjustments applied, and why the price.`;
 
 const SUGGEST_TOOL = {
@@ -69,7 +75,7 @@ export async function suggestPrice(args: {
   const [partRes, historyRes, vendorRes, customerRes] = await Promise.all([
     supabase
       .from("parts")
-      .select("internal_pn, description")
+      .select("internal_pn, description, target_margin_pct")
       .eq("id", args.part_id)
       .maybeSingle(),
     supabase
@@ -116,9 +122,15 @@ export async function suggestPrice(args: {
   const vendor = vendorRes.data as unknown as VendorRow;
 
   const ctx: string[] = [];
+  const part = partRes.data as {
+    internal_pn: string;
+    description: string | null;
+    target_margin_pct: number | string;
+  };
   ctx.push(
-    `Part: ${partRes.data.internal_pn}${partRes.data.description ? ` — ${partRes.data.description}` : ""}`,
+    `Part: ${part.internal_pn}${part.description ? ` — ${part.description}` : ""}`,
   );
+  ctx.push(`Target margin: ${Number(part.target_margin_pct).toFixed(1)}%`);
   const customer = customerRes.data as
     | {
         name: string;

@@ -122,6 +122,7 @@ export type QuoteLineDetail = {
   part_id: string | null;
   part_internal_pn: string | null;
   part_description: string | null;
+  part_target_margin_pct: number | null;
   qty: number;
   unit_price: number | null;
   ai_suggested_price: number | null;
@@ -194,7 +195,7 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
     supabase
       .from("quote_lines")
       .select(
-        "id, position, part_id, qty, unit_price, ai_suggested_price, ai_reasoning, override_reason, line_notes_internal, line_notes_customer, parts(internal_pn, description)",
+        "id, position, part_id, qty, unit_price, ai_suggested_price, ai_reasoning, override_reason, line_notes_internal, line_notes_customer, parts(internal_pn, description, target_margin_pct)",
       )
       .eq("quote_id", id)
       .order("position", { ascending: true }),
@@ -224,7 +225,11 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
     override_reason: string | null;
     line_notes_internal: string | null;
     line_notes_customer: string | null;
-    parts: { internal_pn: string; description: string | null } | null;
+    parts: {
+      internal_pn: string;
+      description: string | null;
+      target_margin_pct: number | string | null;
+    } | null;
   };
 
   const linesRaw = (linesRes.data ?? []) as unknown as LineRow[];
@@ -282,6 +287,10 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
       part_id: l.part_id,
       part_internal_pn: l.parts?.internal_pn ?? null,
       part_description: l.parts?.description ?? null,
+      part_target_margin_pct:
+        l.parts?.target_margin_pct != null
+          ? Number(l.parts.target_margin_pct)
+          : null,
       qty: l.qty,
       unit_price: l.unit_price,
       ai_suggested_price: l.ai_suggested_price,

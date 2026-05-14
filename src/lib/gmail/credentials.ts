@@ -10,6 +10,8 @@ type Credentials = {
   access_token_expires_at: string | null;
   watched_label: string;
   last_polled_at: string | null;
+  last_history_id: string | null;
+  watch_expiration: string | null;
 };
 
 export async function getActiveCredentials(): Promise<Credentials | null> {
@@ -30,6 +32,8 @@ export async function getActiveCredentials(): Promise<Credentials | null> {
     access_token_expires_at: data.access_token_expires_at,
     watched_label: data.watched_label,
     last_polled_at: data.last_polled_at,
+    last_history_id: data.last_history_id ?? null,
+    watch_expiration: data.watch_expiration ?? null,
   };
 }
 

@@ -26,6 +26,7 @@ import {
   OutcomeReasonDialog,
   type Outcome,
 } from "./outcome-reason-dialog";
+import { RfqDialog } from "./rfq-dialog";
 
 const STATUSES = ["draft", "sent", "won", "lost", "expired"] as const;
 type Status = (typeof STATUSES)[number];
@@ -41,11 +42,18 @@ type Props = {
     status: Status;
     validity_date: string | null;
     template_id: string | null;
+    public_token: string | null;
   };
   templates: Array<{ id: string; name: string }>;
+  lines: Array<{
+    part_id: string | null;
+    part_internal_pn: string | null;
+    part_description: string | null;
+    qty: number;
+  }>;
 };
 
-export function QuoteHeader({ quote, templates }: Props) {
+export function QuoteHeader({ quote, templates, lines }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState<Status>(quote.status);
   const [validity, setValidity] = useState(quote.validity_date ?? "");
@@ -161,6 +169,11 @@ export function QuoteHeader({ quote, templates }: Props) {
           <Button size="sm" onClick={onSend}>
             Send ↗
           </Button>
+          <RfqDialog
+            quoteId={quote.id}
+            quoteNumber={quote.quote_number}
+            lines={lines}
+          />
           <Button
             size="sm"
             variant="outline"
