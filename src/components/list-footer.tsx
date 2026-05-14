@@ -32,15 +32,22 @@ export function ListFooter({
   const unit = total === 1 ? unitSingular : unitPlural;
 
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3 border-t bg-muted/10">
-      <span className="text-xs text-muted-foreground">
+    <div className="flex items-center justify-between gap-3 px-6 sm:px-8 py-5 border-t border-foreground/[0.06]">
+      <span className="text-sm text-muted-foreground">
         {total === 0 ? (
           `0 ${unit}`
         ) : (
           <>
-            Showing <strong className="text-foreground">{firstShown}</strong>{" "}
-            to <strong className="text-foreground">{lastShown}</strong> of{" "}
-            <strong className="text-foreground">{total.toLocaleString()}</strong>{" "}
+            Showing{" "}
+            <strong className="text-foreground font-medium">
+              {firstShown}
+            </strong>{" "}
+            to{" "}
+            <strong className="text-foreground font-medium">{lastShown}</strong>{" "}
+            of{" "}
+            <strong className="text-foreground font-medium">
+              {total.toLocaleString()}
+            </strong>{" "}
             {unit}
           </>
         )}
@@ -50,10 +57,10 @@ export function ListFooter({
           href={noPrev ? "#" : buildHref(Math.max(1, page - 1))}
           aria-disabled={noPrev}
           className={cn(
-            "inline-flex h-8 items-center rounded-full border px-3 text-xs transition-colors",
+            "inline-flex h-9 items-center rounded-full border border-foreground/10 px-4 text-sm transition-colors",
             noPrev
-              ? "pointer-events-none text-muted-foreground/60 border-border opacity-60"
-              : "hover:bg-muted",
+              ? "pointer-events-none text-muted-foreground/60 opacity-60"
+              : "hover:bg-muted text-foreground/80",
           )}
         >
           Previous
@@ -62,10 +69,10 @@ export function ListFooter({
           href={noNext ? "#" : buildHref(Math.min(totalPages, page + 1))}
           aria-disabled={noNext}
           className={cn(
-            "inline-flex h-8 items-center rounded-full border px-3 text-xs transition-colors",
+            "inline-flex h-9 items-center rounded-full border border-foreground/10 px-4 text-sm transition-colors",
             noNext
-              ? "pointer-events-none text-muted-foreground/60 border-border opacity-60"
-              : "hover:bg-muted",
+              ? "pointer-events-none text-muted-foreground/60 opacity-60"
+              : "hover:bg-muted text-foreground/80",
           )}
         >
           Next

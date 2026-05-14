@@ -45,9 +45,9 @@ export default async function VendorsPage({
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl">
-      <div className="rounded-xl border bg-card">
+      <div className="rounded-2xl border border-foreground/[0.06] bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
         {/* Header bar */}
-        <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 px-4 sm:px-5 py-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-5 px-6 sm:px-8 py-6">
           <h2 className="text-base font-semibold tracking-tight shrink-0">
             Active Vendors
           </h2>
@@ -63,7 +63,7 @@ export default async function VendorsPage({
           </div>
         </div>
 
-        <div className="border-t min-h-[420px]">
+        <div className="border-t border-foreground/[0.06] min-h-[460px]">
           <Table>
             <TableHeader>
               <TableRow>

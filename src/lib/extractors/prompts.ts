@@ -2,7 +2,7 @@
 // attachment cache entry (see attachment-cache.ts) — bump whenever the
 // system text or extraction tool schema is changed in a way that should
 // produce different output.
-export const PROMPT_VERSION = "v2-2026-05-14-cappn";
+export const PROMPT_VERSION = "v3-2026-05-14-milspec";
 
 // Common rules for all three extractors (email body, PDF, Excel). This
 // block is marked cache_control so it amortizes across every extractor
@@ -21,13 +21,31 @@ Universal rules:
 
 // CAP part-number composition rules. Pairs with the rendered reference
 // data (families/sizes/threads/attributes) injected at call time.
-export const CAP_PN_RULES = `CAP-PN COMPOSITION — for each customer_quote_request line that looks like a standard commercial fastener (bolts/screws/nuts/washers/pins/fittings from the reference below), populate cap_pn_components with the components you can pull from the source text. Rules:
+//
+// CRITICAL nuance learned from real RFQ samples: most customer requests
+// reference an external standard PN (mil-spec, NAS, AN, M-prefix, vendor
+// catalog number, raw numeric SKU). These are NOT descriptions to compose
+// from — they're identifiers that need alias mapping downstream. The
+// extractor should record them in part_number_guess and SKIP cap_pn
+// composition for those lines.
+export const CAP_PN_RULES = `CAP-PN COMPOSITION RULES
+
+You may attempt to compose a CAP-format part number ONLY when the source line is described in plain English (e.g. "1/4-20 grade 8 yellow zinc hex bolt, 3/4 long"). In that case populate cap_pn_components with what you can extract from the text. Rules:
 - Use ONLY codes that appear in the reference table below. If the size/thread/attribute isn't listed, set that field to null and add the missing piece name ("size", "thread", "length", "attribute", etc.) to missing_fields.
 - length_code is a 4-digit thousandths-of-inch string with leading zeros: 1/2" = "0500", 3/4" = "0750", 1" = "1000", 1.5" = "1500", 2" = "2000".
 - suggested_pn: compose ONLY if family + every field the family requires is present. Format: "PREFIX SIZE+THREAD-LENGTH+ATTRIBUTE" (no extra spaces). Example: HCS 04C-0750G8Y. If anything required is missing, set suggested_pn=null.
-- For vendor_quote_reply lines, leave cap_pn_components=null (vendor PNs are external).
-- For specials / aerospace / non-commercial items that don't fit this schema, set cap_pn_components=null and put a brief reason in reasoning.
-- Never invent codes that aren't listed. Never guess a length/thread/grade not stated in the source.`;
+
+DO NOT compose cap_pn_components when the line references an external PN. Set cap_pn_components=null in any of these cases:
+- The line contains a mil-spec / NAS / AN / MS / NASM identifier (e.g. "MS21209-F1-20", "NAS1130-08-15", "NASM5677-50", "AN960-10", "MS51959-32").
+- The line contains an M-prefix / dash-spec identifier with slashes (e.g. "M83248/2-119", "MIL-DTL-83248/1-044").
+- The line contains a manufacturer / vendor catalog number (e.g. "94350A145" McMaster, "91251A537", "CLSS-024-3", "BS-032-2").
+- The line is a raw numeric SKU with no descriptive text ("78171", "78188").
+- The line is a vendor_quote_reply (vendor PNs are external by definition).
+- The line is a "special" / aerospace / non-commercial item that doesn't fit CAP's schema.
+
+For all of those cases: leave cap_pn_components=null, put the recognized PN string in part_number_guess so downstream alias lookup can find a CAP part for it, and use reasoning to note "external customer PN — alias lookup required" or similar.
+
+Never invent codes that aren't listed. Never guess a length/thread/grade not stated in the source.`;
 
 export const EMAIL_ADDENDUM = `Input type: email body (prose, possibly with quote thread / signature).
 

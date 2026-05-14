@@ -77,11 +77,11 @@ export function CustomersTable({
 
   return (
     <>
-      <div className="border-t overflow-x-auto min-h-[420px]">
+      <div className="overflow-x-auto min-h-[460px]">
         <table className="w-full text-sm min-w-[760px]">
           <thead>
-            <tr className="text-left text-[10px] font-semibold tracking-wider uppercase text-muted-foreground border-b">
-              <th className="w-10 px-4 py-3">
+            <tr className="text-left text-xs font-medium tracking-wider uppercase text-muted-foreground/80 border-b border-foreground/[0.06]">
+              <th className="w-14 pl-6 pr-2 py-4">
                 <input
                   type="checkbox"
                   checked={allOnPage}
@@ -90,18 +90,21 @@ export function CustomersTable({
                   className="rounded border-input"
                 />
               </th>
-              <th className="px-3 py-3">Name</th>
-              <th className="px-3 py-3">Company</th>
-              <th className="px-3 py-3">Email</th>
-              <th className="px-3 py-3 text-right">Total quoted</th>
-              <th className="px-3 py-3 text-right">Total won</th>
-              <th className="w-12 px-3 py-3" />
+              <th className="px-4 py-4">Name</th>
+              <th className="px-4 py-4">Company</th>
+              <th className="px-4 py-4">Email</th>
+              <th className="px-4 py-4 text-right">Total quoted</th>
+              <th className="px-4 py-4 text-right">Total won</th>
+              <th className="w-14 pl-2 pr-6 py-4" />
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center text-muted-foreground py-10">
+                <td
+                  colSpan={7}
+                  className="text-center text-muted-foreground py-14"
+                >
                   {hasFilter
                     ? "No customers match the current filter."
                     : "No customers yet — add one to get started."}
@@ -111,9 +114,9 @@ export function CustomersTable({
               rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
+                  className="border-b border-foreground/[0.05] last:border-b-0 hover:bg-muted/20 transition-colors"
                 >
-                  <td className="px-4 py-3 align-middle">
+                  <td className="w-14 pl-6 pr-2 py-5 align-middle">
                     <input
                       type="checkbox"
                       checked={selected.has(row.id)}
@@ -122,32 +125,32 @@ export function CustomersTable({
                       className="rounded border-input"
                     />
                   </td>
-                  <td className="px-3 py-3 align-middle">
+                  <td className="px-4 py-5 align-middle">
                     <Link
                       href={`/customers/${row.id}`}
                       className="flex items-center gap-3 group"
                     >
-                      <div className="size-8 rounded-full bg-muted text-muted-foreground grid place-items-center text-xs font-semibold shrink-0">
+                      <div className="size-9 rounded-full bg-muted/70 text-muted-foreground grid place-items-center text-[11px] font-semibold shrink-0">
                         {initials(row.primary_contact_name, row.name)}
                       </div>
-                      <span className="font-medium group-hover:underline truncate">
+                      <span className="font-medium text-foreground/90 group-hover:underline truncate">
                         {row.primary_contact_name ?? row.name}
                       </span>
                     </Link>
                   </td>
-                  <td className="px-3 py-3 align-middle text-muted-foreground truncate max-w-[220px]">
+                  <td className="px-4 py-5 align-middle text-foreground/70 truncate max-w-[220px]">
                     {row.name}
                   </td>
-                  <td className="px-3 py-3 align-middle text-muted-foreground truncate max-w-[260px]">
+                  <td className="px-4 py-5 align-middle text-foreground/70 truncate max-w-[260px]">
                     {row.primary_email ?? "—"}
                   </td>
-                  <td className="px-3 py-3 align-middle text-right tabular-nums">
+                  <td className="px-4 py-5 align-middle text-right tabular-nums text-foreground/90">
                     {formatMoney(row.total_quoted)}
                   </td>
-                  <td className="px-3 py-3 align-middle text-right tabular-nums">
+                  <td className="px-4 py-5 align-middle text-right tabular-nums text-foreground/90">
                     {formatMoney(row.total_won)}
                   </td>
-                  <td className="px-3 py-3 align-middle">
+                  <td className="w-14 pl-2 pr-6 py-5 align-middle">
                     <RowMenu
                       row={row}
                       onEdit={() => setEditingId(row.id)}
@@ -162,15 +165,24 @@ export function CustomersTable({
       </div>
 
       {/* Footer: counts + pagination */}
-      <div className="flex items-center justify-between gap-3 px-4 py-3 border-t bg-muted/10">
-        <span className="text-xs text-muted-foreground">
+      <div className="flex items-center justify-between gap-3 px-6 sm:px-8 py-5 border-t border-foreground/[0.06]">
+        <span className="text-sm text-muted-foreground">
           {total === 0 ? (
             "0 results"
           ) : (
             <>
-              Showing <strong className="text-foreground">{firstShown}</strong>{" "}
-              to <strong className="text-foreground">{lastShown}</strong> of{" "}
-              <strong className="text-foreground">{total.toLocaleString()}</strong>{" "}
+              Showing{" "}
+              <strong className="text-foreground font-medium">
+                {firstShown}
+              </strong>{" "}
+              to{" "}
+              <strong className="text-foreground font-medium">
+                {lastShown}
+              </strong>{" "}
+              of{" "}
+              <strong className="text-foreground font-medium">
+                {total.toLocaleString()}
+              </strong>{" "}
               results
             </>
           )}
@@ -298,7 +310,6 @@ function Pagination({
   totalPages: number;
 }) {
   const router = useRouter();
-  if (totalPages <= 1) return null;
 
   function goTo(target: number) {
     const params = new URLSearchParams(window.location.search);
@@ -313,12 +324,12 @@ function Pagination({
       <button
         type="button"
         onClick={() => goTo(Math.max(1, page - 1))}
-        disabled={page === 1}
+        disabled={page <= 1}
         className={cn(
-          "inline-flex h-8 items-center rounded-full border px-3 text-xs",
-          page === 1
-            ? "text-muted-foreground border-border opacity-50"
-            : "hover:bg-muted",
+          "inline-flex h-9 items-center rounded-full border border-foreground/10 px-4 text-sm transition-colors",
+          page <= 1
+            ? "text-muted-foreground opacity-60 cursor-not-allowed"
+            : "hover:bg-muted text-foreground/80",
         )}
       >
         Previous
@@ -328,10 +339,10 @@ function Pagination({
         onClick={() => goTo(Math.min(totalPages, page + 1))}
         disabled={page >= totalPages}
         className={cn(
-          "inline-flex h-8 items-center rounded-full border px-3 text-xs",
+          "inline-flex h-9 items-center rounded-full border border-foreground/10 px-4 text-sm transition-colors",
           page >= totalPages
-            ? "text-muted-foreground border-border opacity-50"
-            : "hover:bg-muted",
+            ? "text-muted-foreground opacity-60 cursor-not-allowed"
+            : "hover:bg-muted text-foreground/80",
         )}
       >
         Next

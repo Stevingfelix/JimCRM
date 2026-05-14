@@ -59,3 +59,74 @@ export async function createPartAndRedirect(input: CreatePartInput) {
   }
   return result;
 }
+
+// One-shot helper for the review queue: when an inbound RFQ line uses an
+// external PN (mil-spec, NAS, vendor catalog, etc.) that doesn't match any
+// existing CAP part, Jim can create the CAP part AND register the external
+// PN as an alias in a single call. Returns the new part's id so the
+// review row can immediately link to it.
+
+const CreatePartWithAliasSchema = z.object({
+  internal_pn: z.string().trim().min(1, "Internal PN is required").max(120),
+  description: z.string().trim().max(1000).optional().nullable(),
+  alias_pn: z.string().trim().min(1, "Alias is required").max(120),
+  alias_source_type: z
+    .enum(["customer", "manufacturer", "vendor", "other"])
+    .default("customer"),
+  alias_source_name: z.string().trim().max(120).optional().nullable(),
+});
+
+export async function createPartWithAlias(
+  input: z.input<typeof CreatePartWithAliasSchema>,
+): Promise<ActionResult<{ id: string; internal_pn: string }>> {
+  const parsed = CreatePartWithAliasSchema.safeParse(input);
+  if (!parsed.success) {
+    return err("validation", parsed.error.issues[0].message);
+  }
+  try {
+    const supabase = createClient();
+    const userId = await getCurrentUserId();
+
+    const { data: part, error: partErr } = await supabase
+      .from("parts")
+      .insert({
+        internal_pn: parsed.data.internal_pn,
+        description: parsed.data.description ?? null,
+        created_by: userId,
+        updated_by: userId,
+      })
+      .select("id, internal_pn")
+      .single();
+    if (partErr) {
+      if (partErr.code === "23505") {
+        return err(
+          "duplicate",
+          `Internal PN "${parsed.data.internal_pn}" already exists — search for it instead.`,
+        );
+      }
+      return err(partErr.code ?? "db_error", partErr.message);
+    }
+
+    const { error: aliasErr } = await supabase.from("part_aliases").insert({
+      part_id: part.id,
+      alias_pn: parsed.data.alias_pn,
+      source_type: parsed.data.alias_source_type,
+      source_name: parsed.data.alias_source_name ?? null,
+      created_by: userId,
+      updated_by: userId,
+    });
+    // If the alias insert fails, keep the part — Jim can add aliases later.
+    // Surface the error in the result so the UI can warn.
+    if (aliasErr) {
+      return err(
+        "alias_failed",
+        `Part created but alias couldn't be added: ${aliasErr.message}`,
+      );
+    }
+
+    revalidatePath("/parts");
+    return ok({ id: part.id, internal_pn: part.internal_pn });
+  } catch (e) {
+    return fromException(e);
+  }
+}

@@ -59,14 +59,14 @@ export default async function QuotesPage({
     <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 max-w-7xl">
       <QuotesOverviewTiles overview={overview} />
 
-      <div className="rounded-xl border bg-card">
+      <div className="rounded-2xl border border-foreground/[0.06] bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
         {/* Tabs + actions row */}
-        <div className="flex items-center justify-between gap-3 px-4 pt-3">
+        <div className="flex items-center justify-between gap-3 px-6 sm:px-8 pt-4">
           <QuotesStatusTabs />
         </div>
 
         {/* Search + count + saved + export row */}
-        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b">
+        <div className="flex items-center justify-between gap-3 px-6 sm:px-8 py-5 border-b border-foreground/[0.06]">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <QuotesFilters />
           </div>
@@ -78,7 +78,7 @@ export default async function QuotesPage({
             />
             <a
               href="/api/export/csv"
-              className="inline-flex h-9 items-center gap-1.5 rounded-full border bg-background px-4 text-sm hover:bg-muted transition-colors"
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-foreground/10 bg-background px-5 text-sm hover:bg-muted transition-colors"
             >
               <Download className="size-3.5" />
               Export CSV
@@ -86,7 +86,7 @@ export default async function QuotesPage({
           </div>
         </div>
 
-        <div className="min-h-[420px]">
+        <div className="min-h-[460px]">
           <Table>
             <TableHeader>
               <TableRow>
