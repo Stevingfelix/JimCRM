@@ -133,16 +133,27 @@ export function Sidebar({ reviewCount = 0, user, company }: Props) {
       </nav>
 
       <div className="p-3 border-t">
-        <div className="flex items-center gap-2.5 px-2 py-1.5">
-          <div className="size-9 rounded-full bg-brand-gradient text-primary-foreground grid place-items-center font-semibold text-sm shadow-sm shrink-0">
-            {initials}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">{displayName}</div>
-            <div className="text-[11px] text-muted-foreground tracking-wide uppercase">
-              {user.role}
+        <div className="flex items-center gap-1.5">
+          <Link
+            href="/settings/profile"
+            className={cn(
+              "flex-1 min-w-0 flex items-center gap-2.5 px-2 py-1.5 rounded-lg transition-colors",
+              pathname.startsWith("/settings/profile")
+                ? "bg-brand-gradient-soft"
+                : "hover:bg-muted",
+            )}
+            aria-label="Open profile settings"
+          >
+            <div className="size-9 rounded-full bg-brand-gradient text-primary-foreground grid place-items-center font-semibold text-sm shadow-sm shrink-0">
+              {initials}
             </div>
-          </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium truncate">{displayName}</div>
+              <div className="text-[11px] text-muted-foreground tracking-wide uppercase">
+                {user.role}
+              </div>
+            </div>
+          </Link>
           <form
             action={() => {
               startSignOut(async () => {

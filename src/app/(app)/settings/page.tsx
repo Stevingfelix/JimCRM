@@ -1,9 +1,22 @@
 import Link from "next/link";
-import { Building2, Users, FileSpreadsheet, ArrowRight } from "lucide-react";
+import {
+  Building2,
+  Users,
+  FileSpreadsheet,
+  UserCircle,
+  ArrowRight,
+} from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 const SECTIONS = [
+  {
+    href: "/settings/profile",
+    title: "Profile",
+    blurb:
+      "Your display name, sign-in email, and password. Affects how you appear in the sidebar and on quotes.",
+    Icon: UserCircle,
+  },
   {
     href: "/settings/company",
     title: "Company info",
