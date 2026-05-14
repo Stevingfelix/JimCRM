@@ -1,0 +1,12 @@
+name = "cap-quoting-gmail-cron"
+main = "worker.js"
+compatibility_date = "2026-05-14"
+
+# Every minute. Cloudflare Workers free tier allows any cron schedule, no caps.
+[triggers]
+crons = ["* * * * *"]
+
+# Secrets are set via `wrangler secret put` (NOT here — never commit secrets).
+# Required secrets:
+#   APP_URL      — e.g. https://jim-crm.vercel.app
+#   CRON_SECRET  — same value as the Next.js app's CRON_SECRET env var
