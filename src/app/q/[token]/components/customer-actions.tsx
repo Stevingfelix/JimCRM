@@ -57,7 +57,7 @@ export function CustomerActions({ token }: { token: string }) {
       ) : (
         <div className="space-y-3">
           <div className="text-sm">
-            Briefly, what's the reason? (Optional — helps us improve our
+            Briefly, what&apos;s the reason? (Optional — helps us improve our
             quotes.)
           </div>
           <Textarea
