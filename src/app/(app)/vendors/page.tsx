@@ -12,7 +12,6 @@ import { SavedSearchesMenu } from "@/components/saved-searches-menu";
 import { getSavedSearches } from "@/app/(app)/saved-searches/actions";
 import { listVendors } from "./queries";
 import { VendorsSearch } from "./components/vendors-search";
-import { NewVendorDialog } from "./components/new-vendor-dialog";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -46,7 +45,6 @@ export default async function VendorsPage({
             routeBase="/vendors"
             initial={saved}
           />
-          <NewVendorDialog />
         </div>
       </div>
 

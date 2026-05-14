@@ -2,6 +2,73 @@ import { createClient } from "@/lib/supabase/server";
 
 const PAGE_SIZE = 50;
 
+export type QuotesOverview = {
+  open: { count: number; value: number };
+  expiring_soon: { count: number; value: number };
+  won_30d: { count: number; value: number };
+};
+
+// Aggregates for the three KPI tiles at the top of the quotes list.
+// Computed in-memory after a single fetch — Postgres-side aggregation across
+// joined quote_lines is messier than just summing here.
+export async function getQuotesOverview(): Promise<QuotesOverview> {
+  const supabase = createClient();
+  const now = new Date();
+  const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const today = now.toISOString().slice(0, 10);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    .toISOString();
+
+  const [openRes, expiringRes, wonRes] = await Promise.all([
+    supabase
+      .from("quotes")
+      .select("id, validity_date, quote_lines(qty, unit_price)")
+      .eq("status", "sent")
+      .is("deleted_at", null),
+    supabase
+      .from("quotes")
+      .select("id, validity_date, quote_lines(qty, unit_price)")
+      .eq("status", "sent")
+      .is("deleted_at", null)
+      .not("validity_date", "is", null)
+      .gte("validity_date", today)
+      .lte("validity_date", in7Days),
+    supabase
+      .from("quotes")
+      .select("id, quote_lines(qty, unit_price)")
+      .eq("status", "won")
+      .is("deleted_at", null)
+      .gte("updated_at", thirtyDaysAgo),
+  ]);
+
+  type QRow = {
+    id: string;
+    validity_date?: string | null;
+    quote_lines: Array<{ qty: number; unit_price: number | null }>;
+  };
+
+  const sum = (rows: QRow[] | null | undefined): number =>
+    (rows ?? []).reduce<number>((acc, r) => {
+      const lineTotal = r.quote_lines.reduce<number>((a, l) => {
+        if (l.unit_price == null) return a;
+        return a + l.qty * l.unit_price;
+      }, 0);
+      return acc + lineTotal;
+    }, 0);
+
+  const openRows = (openRes.data ?? []) as unknown as QRow[];
+  const expiringRows = (expiringRes.data ?? []) as unknown as QRow[];
+  const wonRows = (wonRes.data ?? []) as unknown as QRow[];
+
+  return {
+    open: { count: openRows.length, value: sum(openRows) },
+    expiring_soon: { count: expiringRows.length, value: sum(expiringRows) },
+    won_30d: { count: wonRows.length, value: sum(wonRows) },
+  };
+}
+
 export type QuoteStatus = "draft" | "sent" | "won" | "lost" | "expired";
 export const QUOTE_STATUSES: QuoteStatus[] = [
   "draft",

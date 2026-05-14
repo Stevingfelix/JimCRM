@@ -11,7 +11,6 @@ import { SavedSearchesMenu } from "@/components/saved-searches-menu";
 import { getSavedSearches } from "@/app/(app)/saved-searches/actions";
 import { listParts } from "./queries";
 import { PartsSearch } from "./components/parts-search";
-import { NewPartDialog } from "./components/new-part-dialog";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -54,7 +53,6 @@ export default async function PartsPage({
             routeBase="/parts"
             initial={saved}
           />
-          <NewPartDialog />
         </div>
       </div>
 

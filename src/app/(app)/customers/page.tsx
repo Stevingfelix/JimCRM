@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/table";
 import { listCustomers } from "./queries";
 import { CustomersSearch } from "./components/customers-search";
-import { NewCustomerDialog } from "./components/new-customer-dialog";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -26,12 +25,9 @@ export default async function CustomersPage({
 
   return (
     <div className="px-8 py-8 space-y-5 max-w-7xl">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          {total.toLocaleString()} {total === 1 ? "customer" : "customers"}
-        </p>
-        <NewCustomerDialog />
-      </div>
+      <p className="text-sm text-muted-foreground">
+        {total.toLocaleString()} {total === 1 ? "customer" : "customers"}
+      </p>
 
       <CustomersSearch />
 

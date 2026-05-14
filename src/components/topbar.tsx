@@ -4,6 +4,9 @@ import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
 import { NewQuoteDialog } from "@/app/(app)/quotes/components/new-quote-dialog";
+import { NewCustomerDialog } from "@/app/(app)/customers/components/new-customer-dialog";
+import { NewPartDialog } from "@/app/(app)/parts/components/new-part-dialog";
+import { NewVendorDialog } from "@/app/(app)/vendors/components/new-vendor-dialog";
 
 type Notif = React.ComponentProps<typeof NotificationBell>["initial"];
 
@@ -25,13 +28,35 @@ const STATIC_TITLES: Record<string, string> = {
 
 function titleFor(pathname: string): string {
   if (STATIC_TITLES[pathname]) return STATIC_TITLES[pathname];
-  // Detail routes (e.g. /quotes/abc-123) fall back to the parent.
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length > 0) {
     const parent = "/" + segments[0];
     if (STATIC_TITLES[parent]) return STATIC_TITLES[parent];
   }
   return "";
+}
+
+// Pick the right "+ New X" dialog for the current route. Each dialog is
+// self-contained (its own trigger button and state), so we just render the
+// matching component. Returns null on routes where a new action doesn't fit
+// (Review / Analytics / Settings / their children).
+function ActionFor({ pathname }: { pathname: string }) {
+  const segments = pathname.split("/").filter(Boolean);
+  const top = "/" + (segments[0] ?? "");
+
+  switch (top) {
+    case "/":
+    case "/quotes":
+      return <NewQuoteDialog />;
+    case "/customers":
+      return <NewCustomerDialog />;
+    case "/parts":
+      return <NewPartDialog />;
+    case "/vendors":
+      return <NewVendorDialog />;
+    default:
+      return null;
+  }
 }
 
 function openCommandPalette() {
@@ -69,7 +94,7 @@ export function TopBar({ notifications }: { notifications: Notif }) {
 
       <div className="flex items-center gap-2 shrink-0">
         <NotificationBell initial={notifications} />
-        <NewQuoteDialog />
+        <ActionFor pathname={pathname} />
       </div>
     </header>
   );
