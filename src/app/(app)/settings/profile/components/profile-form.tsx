@@ -98,8 +98,8 @@ export function ProfileForm({ initial }: { initial: Initial }) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* IDENTITY */}
+    <div className="grid lg:grid-cols-2 gap-6">
+      {/* IDENTITY (left column) */}
       <section className="rounded-xl border bg-card p-5 space-y-4">
         <div className="flex items-center gap-4">
           <div className="size-14 rounded-full bg-brand-gradient text-primary-foreground grid place-items-center font-semibold text-base shadow-sm shrink-0">
@@ -148,72 +148,73 @@ export function ProfileForm({ initial }: { initial: Initial }) {
         </div>
       </section>
 
-      {/* PASSWORD */}
-      <section className="rounded-xl border bg-card p-5 space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold">Change password</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Use at least 8 characters. You&apos;ll stay signed in on this
-            device.
-          </p>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">
-              New password
-            </Label>
-            <Input
-              type="password"
-              autoComplete="new-password"
-              value={newPw}
-              onChange={(e) => setNewPw(e.target.value)}
-              placeholder="••••••••"
-            />
+      {/* PASSWORD + SESSIONS (right column, stacked) */}
+      <div className="space-y-6">
+        <section className="rounded-xl border bg-card p-5 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold">Change password</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Use at least 8 characters. You&apos;ll stay signed in on this
+              device.
+            </p>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">
-              Confirm new password
-            </Label>
-            <Input
-              type="password"
-              autoComplete="new-password"
-              value={confirmPw}
-              onChange={(e) => setConfirmPw(e.target.value)}
-              placeholder="••••••••"
-            />
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">
+                New password
+              </Label>
+              <Input
+                type="password"
+                autoComplete="new-password"
+                value={newPw}
+                onChange={(e) => setNewPw(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">
+                Confirm new password
+              </Label>
+              <Input
+                type="password"
+                autoComplete="new-password"
+                value={confirmPw}
+                onChange={(e) => setConfirmPw(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
           </div>
-        </div>
-        <div className="flex items-center justify-end">
-          <Button
-            onClick={handlePasswordSave}
-            disabled={savingPw || !newPw || !confirmPw}
-            className="rounded-full"
-          >
-            {savingPw ? "Updating…" : "Change password"}
-          </Button>
-        </div>
-      </section>
+          <div className="flex items-center justify-end">
+            <Button
+              onClick={handlePasswordSave}
+              disabled={savingPw || !newPw || !confirmPw}
+              className="rounded-full"
+            >
+              {savingPw ? "Updating…" : "Change password"}
+            </Button>
+          </div>
+        </section>
 
-      {/* SESSIONS */}
-      <section className="rounded-xl border bg-card p-5 space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold">Sessions</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Sign out of every device and browser where you&apos;re signed in.
-          </p>
-        </div>
-        <div className="flex items-center justify-end">
-          <Button
-            variant="outline"
-            onClick={handleSignOutAll}
-            disabled={signingOut}
-            className="rounded-full"
-          >
-            <LogOut className="size-4 mr-2" />
-            {signingOut ? "Signing out…" : "Sign out everywhere"}
-          </Button>
-        </div>
-      </section>
+        <section className="rounded-xl border bg-card p-5 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold">Sessions</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Sign out of every device and browser where you&apos;re signed in.
+            </p>
+          </div>
+          <div className="flex items-center justify-end">
+            <Button
+              variant="outline"
+              onClick={handleSignOutAll}
+              disabled={signingOut}
+              className="rounded-full"
+            >
+              <LogOut className="size-4 mr-2" />
+              {signingOut ? "Signing out…" : "Sign out everywhere"}
+            </Button>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

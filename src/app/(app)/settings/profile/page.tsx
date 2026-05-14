@@ -10,7 +10,7 @@ export default async function ProfilePage() {
   if (!me) redirect("/login");
 
   return (
-    <div className="px-8 py-8 space-y-6 max-w-3xl">
+    <div className="px-8 py-8 space-y-6 max-w-5xl">
       <div className="space-y-1">
         <Link
           href="/settings"

@@ -1,19 +1,15 @@
-import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
-  TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate, formatMoney, formatQuoteNumber } from "@/lib/format";
 import { SavedSearchesMenu } from "@/components/saved-searches-menu";
 import { getSavedSearches } from "@/app/(app)/saved-searches/actions";
 import { listQuotes, type QuoteStatus } from "./queries";
 import { QuotesFilters } from "./components/quotes-filters";
 import { NewQuoteDialog } from "./components/new-quote-dialog";
+import { QuotesListBody } from "./components/quotes-list-body";
 
 const STATUS_VALUES = new Set([
   "draft",
@@ -76,58 +72,14 @@ export default async function QuotesPage({
               <TableHead className="w-[120px] text-right">Total</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {rows.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="text-center text-sm text-muted-foreground py-8"
-                >
-                  {searchParams.q || searchParams.status
-                    ? "No quotes match the current filter"
-                    : "No quotes yet — create one to get started"}
-                </TableCell>
-              </TableRow>
-            ) : (
-              rows.map((row) => (
-                <TableRow key={row.id} className="hover:bg-muted/40">
-                  <TableCell className="font-medium tabular-nums">
-                    <Link
-                      href={`/quotes/${row.id}`}
-                      className="hover:underline"
-                    >
-                      {formatQuoteNumber(row.quote_number)}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    <Link
-                      href={`/customers/${row.customer_id}`}
-                      className="hover:underline"
-                    >
-                      {row.customer_name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="capitalize">
-                      {row.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground tabular-nums">
-                    {formatDate(row.created_at)}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground tabular-nums">
-                    {formatDate(row.validity_date)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-sm">
-                    {row.line_count}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-sm">
-                    {formatMoney(row.total)}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
+          <QuotesListBody
+            rows={rows}
+            emptyMessage={
+              searchParams.q || searchParams.status
+                ? "No quotes match the current filter"
+                : "No quotes yet — create one to get started"
+            }
+          />
         </Table>
       </div>
     </div>
