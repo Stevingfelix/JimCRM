@@ -208,6 +208,7 @@ export type Database = {
       }
       customers: {
         Row: {
+          billing_address: string | null
           contacts: Json
           created_at: string
           created_by: string | null
@@ -221,6 +222,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          billing_address?: string | null
           contacts?: Json
           created_at?: string
           created_by?: string | null
@@ -234,6 +236,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          billing_address?: string | null
           contacts?: Json
           created_at?: string
           created_by?: string | null

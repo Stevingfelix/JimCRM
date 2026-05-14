@@ -4,11 +4,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserId } from "@/lib/auth";
+import { getAnthropic, MODELS } from "@/lib/anthropic";
 import { type ActionResult, err, fromException, ok } from "@/lib/result";
 
 const CreateCustomerSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(200),
   notes: z.string().trim().max(2000).optional().nullable(),
+  billing_address: z.string().trim().max(500).optional().nullable(),
   primary_contact: z
     .object({
       name: z.string().trim().max(120).nullable(),
@@ -38,6 +40,7 @@ export async function createCustomer(
       .insert({
         name: parsed.data.name,
         notes: parsed.data.notes ?? null,
+        billing_address: parsed.data.billing_address ?? null,
         created_by: userId,
         updated_by: userId,
       })
@@ -212,6 +215,100 @@ export async function deleteContact({
     if (error) return err(error.code ?? "db_error", error.message);
     revalidatePath(`/customers/${customer_id}`);
     return ok(undefined);
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
+// AI extraction from free text or voice transcript. Uses Haiku (cheap) since
+// it's a small structured-output job. Returns whatever fields the model can
+// confidently identify; nulls for the rest.
+
+const CUSTOMER_EXTRACT_TOOL = {
+  name: "extract_customer",
+  description: "Structured customer contact details parsed from free text.",
+  input_schema: {
+    type: "object",
+    properties: {
+      company_name: { type: ["string", "null"] },
+      contact_name: { type: ["string", "null"] },
+      contact_email: { type: ["string", "null"] },
+      contact_phone: { type: ["string", "null"] },
+      billing_address: { type: ["string", "null"] },
+      notes: { type: ["string", "null"] },
+    },
+    required: [
+      "company_name",
+      "contact_name",
+      "contact_email",
+      "contact_phone",
+      "billing_address",
+      "notes",
+    ],
+  },
+} as const;
+
+const CUSTOMER_EXTRACT_SYSTEM = `You parse short notes, emails, voicemails, or transcripts and extract one customer's contact details.
+
+Rules:
+- Output ONLY via the extract_customer tool. No prose.
+- Use null when a field isn't clearly stated. Do not invent values.
+- company_name: the buying company (e.g. "Acme Hardware Group"). If only a person is named with no company, leave null.
+- contact_name: the human person to talk to.
+- contact_email: a valid email address present in the text.
+- contact_phone: a phone number — keep digits and the leading country code if stated; strip extra punctuation.
+- billing_address: a single free-text address block (lines separated by newlines).
+- notes: any non-contact context worth keeping (terms, freight preference, etc.). Brief — one short sentence at most.`;
+
+const ExtractedCustomerSchema = z.object({
+  company_name: z.string().nullable(),
+  contact_name: z.string().nullable(),
+  contact_email: z.string().nullable(),
+  contact_phone: z.string().nullable(),
+  billing_address: z.string().nullable(),
+  notes: z.string().nullable(),
+});
+
+export type ExtractedCustomer = z.infer<typeof ExtractedCustomerSchema>;
+
+export async function extractCustomerFromText(
+  text: string,
+): Promise<ActionResult<ExtractedCustomer>> {
+  const t = text.trim();
+  if (!t) return err("validation", "Paste or speak something first");
+  if (t.length > 4000) {
+    return err("validation", "Too long — keep under 4000 characters");
+  }
+
+  try {
+    const client = getAnthropic();
+    const response = await client.messages.create({
+      model: MODELS.classification, // Haiku — cheap, plenty for this
+      max_tokens: 800,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tools: [CUSTOMER_EXTRACT_TOOL as any],
+      tool_choice: { type: "tool", name: CUSTOMER_EXTRACT_TOOL.name },
+      system: [
+        {
+          type: "text",
+          text: CUSTOMER_EXTRACT_SYSTEM,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages: [{ role: "user", content: t }],
+    });
+
+    const toolUse = response.content.find(
+      (c): c is Extract<typeof c, { type: "tool_use" }> =>
+        c.type === "tool_use",
+    );
+    if (!toolUse) return err("llm_error", "Could not extract — try again");
+
+    const parsed = ExtractedCustomerSchema.safeParse(toolUse.input);
+    if (!parsed.success) {
+      return err("llm_error", "Got an unexpected response shape");
+    }
+    return ok(parsed.data);
   } catch (e) {
     return fromException(e);
   }
