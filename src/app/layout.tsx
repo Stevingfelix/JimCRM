@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import localFont from "next/font/local";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 // Plus Jakarta Sans — rounded, humanist sans with a soft, premium feel.
@@ -32,7 +33,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${jakarta.variable} ${geistMono.variable}`}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        {children}
+        {/* Mounted at the root so toasts work on the public /q/[token]
+            portal too — that route is outside the (app) group so it
+            doesn't inherit the in-app Toaster. The (app) layout still
+            has its own Toaster; they live side-by-side without conflict. */}
+        <Toaster richColors closeButton />
+      </body>
     </html>
   );
 }
