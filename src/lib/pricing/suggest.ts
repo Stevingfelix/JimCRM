@@ -9,7 +9,7 @@ const SYSTEM_PROMPT = `You are a pricing assistant for CAP Hardware Supply (hard
 
 Inputs you'll see:
 - The internal part description
-- The customer
+- The customer (plus any customer-specific pricing rules — markup multiplier, flat discount %, free-text pricing notes)
 - Last 5 customer quotes for the same part (cross-customer)
 - Latest vendor cost (your cost basis)
 - The qty tier
@@ -23,7 +23,13 @@ Principles:
 - Only history → follow the most recent comparable, explain.
 - Round to 4 decimal places.
 
-Output via the suggest_price tool. Reasoning is ONE sentence describing the data used and why the price.`;
+Customer-specific pricing rules (apply AFTER computing the baseline price):
+- Multiply by markup_multiplier (1.000 = no change, >1 = above baseline, <1 = below).
+- Then subtract discount_pct from the result.
+- Pricing notes are free-text instructions from Jim (e.g. "never quote below cost", "match Acme's last price"). Treat as overriding guidance.
+- Mention which adjustments you applied in the reasoning if multiplier != 1.000 OR discount_pct > 0.
+
+Output via the suggest_price tool. Reasoning is ONE sentence describing the data used, any customer adjustments applied, and why the price.`;
 
 const SUGGEST_TOOL = {
   name: "suggest_price",
@@ -86,7 +92,7 @@ export async function suggestPrice(args: {
       .maybeSingle(),
     supabase
       .from("customers")
-      .select("name")
+      .select("name, markup_multiplier, discount_pct, pricing_notes")
       .eq("id", args.customer_id)
       .maybeSingle(),
   ]);
@@ -113,7 +119,22 @@ export async function suggestPrice(args: {
   ctx.push(
     `Part: ${partRes.data.internal_pn}${partRes.data.description ? ` — ${partRes.data.description}` : ""}`,
   );
-  ctx.push(`Customer: ${customerRes.data?.name ?? "(unknown)"}`);
+  const customer = customerRes.data as
+    | {
+        name: string;
+        markup_multiplier: number | string;
+        discount_pct: number | string;
+        pricing_notes: string | null;
+      }
+    | null;
+  ctx.push(`Customer: ${customer?.name ?? "(unknown)"}`);
+  if (customer) {
+    const mm = Number(customer.markup_multiplier ?? 1);
+    const dp = Number(customer.discount_pct ?? 0);
+    ctx.push(
+      `Customer pricing rules: markup_multiplier=${mm.toFixed(3)} · discount_pct=${dp.toFixed(2)}%${customer.pricing_notes ? `\n  Notes: ${customer.pricing_notes}` : ""}`,
+    );
+  }
   ctx.push(`Qty asked: ${args.qty} (tier ${qtyTier(args.qty)})`);
   ctx.push("");
   ctx.push("Last 5 customer quotes for this part:");

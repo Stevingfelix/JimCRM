@@ -8,6 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SavedSearchesMenu } from "@/components/saved-searches-menu";
+import { getSavedSearches } from "@/app/(app)/saved-searches/actions";
 import { listVendors } from "./queries";
 import { VendorsSearch } from "./components/vendors-search";
 import { NewVendorDialog } from "./components/new-vendor-dialog";
@@ -23,11 +25,14 @@ export default async function VendorsPage({
   searchParams: { q?: string; category?: string; page?: string };
 }) {
   const page = Math.max(1, Number(searchParams.page) || 1);
-  const { rows, total, categories } = await listVendors({
-    q: searchParams.q,
-    category: searchParams.category,
-    page,
-  });
+  const [{ rows, total, categories }, saved] = await Promise.all([
+    listVendors({
+      q: searchParams.q,
+      category: searchParams.category,
+      page,
+    }),
+    getSavedSearches("vendors"),
+  ]);
 
   return (
     <div className="px-8 py-8 space-y-6 max-w-7xl">
@@ -38,7 +43,14 @@ export default async function VendorsPage({
             {total.toLocaleString()} total
           </p>
         </div>
-        <NewVendorDialog />
+        <div className="flex items-center gap-2">
+          <SavedSearchesMenu
+            routeKey="vendors"
+            routeBase="/vendors"
+            initial={saved}
+          />
+          <NewVendorDialog />
+        </div>
       </div>
 
       <VendorsSearch categories={categories} />

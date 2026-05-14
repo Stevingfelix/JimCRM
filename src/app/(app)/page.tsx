@@ -1,11 +1,15 @@
 import Link from "next/link";
-import { Inbox, FileText, Send, Package } from "lucide-react";
+import { Inbox, FileText, Send, Package, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatMoney, formatQuoteNumber } from "@/lib/format";
 import { getDashboardData } from "./dashboard-queries";
+import { getReorderHints } from "./reorder-queries";
 
 export default async function DashboardPage() {
-  const data = await getDashboardData();
+  const [data, reorderHints] = await Promise.all([
+    getDashboardData(),
+    getReorderHints(8),
+  ]);
 
   return (
     <div className="px-8 py-8 space-y-8 max-w-7xl">
@@ -43,6 +47,50 @@ export default async function DashboardPage() {
           href="/parts"
         />
       </section>
+
+      {reorderHints.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock className="size-4 text-primary" />
+            <h2 className="text-sm font-semibold tracking-tight">
+              Reorder reminders
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              Customers overdue for parts they regularly buy.
+            </span>
+          </div>
+          <div className="rounded-xl border bg-card overflow-hidden">
+            <ul className="divide-y">
+              {reorderHints.map((h) => (
+                <li key={`${h.customer_id}::${h.part_id}`}>
+                  <Link
+                    href={`/customers/${h.customer_id}`}
+                    className="flex items-center gap-4 px-4 py-3 hover:bg-muted/40 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {h.customer_name}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        usually orders{" "}
+                        <code className="text-foreground">{h.internal_pn}</code>{" "}
+                        every ~{h.avg_interval_days} days · last:{" "}
+                        {formatDate(h.last_quote_at)} ({h.days_since_last}d ago)
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-50 text-amber-700 border-amber-200 tabular-nums shrink-0"
+                    >
+                      +{h.overdue_days}d overdue
+                    </Badge>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card title="Recent quotes" emptyText="No quotes yet" href="/quotes">

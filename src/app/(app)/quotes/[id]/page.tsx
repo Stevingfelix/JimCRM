@@ -5,6 +5,7 @@ import { QuoteHeader } from "./components/quote-header";
 import { LinesEditor } from "./components/lines-editor";
 import { NotesSection } from "./components/notes-section";
 import { AttachmentsSection } from "./components/attachments-section";
+import { ActivityLog } from "./components/activity-log";
 
 export default async function QuoteDetailPage({
   params,
@@ -48,6 +49,13 @@ export default async function QuoteDetailPage({
           quoteId={detail.quote.id}
           attachments={detail.attachments}
         />
+      </section>
+
+      <Separator />
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold tracking-tight">Activity</h2>
+        <ActivityLog quoteId={detail.quote.id} />
       </section>
     </div>
   );

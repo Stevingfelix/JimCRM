@@ -9,6 +9,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDate, formatMoney, formatQuoteNumber } from "@/lib/format";
+import { SavedSearchesMenu } from "@/components/saved-searches-menu";
+import { getSavedSearches } from "@/app/(app)/saved-searches/actions";
 import { listQuotes, type QuoteStatus } from "./queries";
 import { QuotesFilters } from "./components/quotes-filters";
 import { NewQuoteDialog } from "./components/new-quote-dialog";
@@ -31,11 +33,14 @@ export default async function QuotesPage({
     searchParams.status && STATUS_VALUES.has(searchParams.status)
       ? (searchParams.status as QuoteStatus)
       : null;
-  const { rows, total } = await listQuotes({
-    q: searchParams.q,
-    status,
-    page,
-  });
+  const [{ rows, total }, saved] = await Promise.all([
+    listQuotes({
+      q: searchParams.q,
+      status,
+      page,
+    }),
+    getSavedSearches("quotes"),
+  ]);
 
   return (
     <div className="px-8 py-8 space-y-6 max-w-7xl">
@@ -46,7 +51,14 @@ export default async function QuotesPage({
             {total.toLocaleString()} total
           </p>
         </div>
-        <NewQuoteDialog />
+        <div className="flex items-center gap-2">
+          <SavedSearchesMenu
+            routeKey="quotes"
+            routeBase="/quotes"
+            initial={saved}
+          />
+          <NewQuoteDialog />
+        </div>
       </div>
 
       <QuotesFilters />

@@ -454,6 +454,64 @@ export async function deleteQuoteAttachment({
   }
 }
 
+const ShareQuoteSchema = z.object({ id: z.string().uuid() });
+
+export async function generatePublicLink(
+  input: z.input<typeof ShareQuoteSchema>,
+): Promise<ActionResult<{ token: string }>> {
+  const parsed = ShareQuoteSchema.safeParse(input);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+  try {
+    const supabase = createClient();
+    const userId = await getCurrentUserId();
+    // Generate fresh token (regenerates if one already exists, revoking the
+    // old link).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: tokenResp, error: tokenErr } = await (supabase.rpc as any)(
+      "gen_quote_public_token",
+    );
+    if (tokenErr) return err(tokenErr.code ?? "db_error", tokenErr.message);
+    const token = tokenResp as string;
+    const { error } = await supabase
+      .from("quotes")
+      .update({
+        public_token: token,
+        public_shared_at: new Date().toISOString(),
+        updated_by: userId,
+      })
+      .eq("id", parsed.data.id);
+    if (error) return err(error.code ?? "db_error", error.message);
+    revalidatePath(`/quotes/${parsed.data.id}`);
+    return ok({ token });
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
+export async function revokePublicLink(
+  input: z.input<typeof ShareQuoteSchema>,
+): Promise<ActionResult<void>> {
+  const parsed = ShareQuoteSchema.safeParse(input);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+  try {
+    const supabase = createClient();
+    const userId = await getCurrentUserId();
+    const { error } = await supabase
+      .from("quotes")
+      .update({
+        public_token: null,
+        public_shared_at: null,
+        updated_by: userId,
+      })
+      .eq("id", parsed.data.id);
+    if (error) return err(error.code ?? "db_error", error.message);
+    revalidatePath(`/quotes/${parsed.data.id}`);
+    return ok(undefined);
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
 export async function softDeleteQuote(id: string): Promise<ActionResult<void>> {
   if (!z.string().uuid().safeParse(id).success) {
     return err("validation", "Invalid id");

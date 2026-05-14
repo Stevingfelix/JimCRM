@@ -153,6 +153,7 @@ export type QuoteDetail = {
     template_id: string | null;
     sent_at: string | null;
     created_at: string;
+    public_token: string | null;
   };
   templates: Array<{ id: string; name: string; is_default: boolean }>;
   lines: QuoteLineDetail[];
@@ -184,6 +185,7 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
     template_id: string | null;
     sent_at: string | null;
     created_at: string;
+    public_token: string | null;
     customers: { name: string };
   };
   const q = quote as unknown as QuoteRow;
@@ -305,6 +307,7 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
       template_id: q.template_id,
       sent_at: q.sent_at,
       created_at: q.created_at,
+      public_token: q.public_token,
     },
     templates: templatesRes.data ?? [],
     lines,

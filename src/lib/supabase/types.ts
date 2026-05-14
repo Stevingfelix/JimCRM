@@ -121,9 +121,12 @@ export type Database = {
           contacts: Json
           created_at: string
           created_by: string | null
+          discount_pct: number
           id: string
+          markup_multiplier: number
           name: string
           notes: string | null
+          pricing_notes: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -131,9 +134,12 @@ export type Database = {
           contacts?: Json
           created_at?: string
           created_by?: string | null
+          discount_pct?: number
           id?: string
+          markup_multiplier?: number
           name: string
           notes?: string | null
+          pricing_notes?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -141,9 +147,12 @@ export type Database = {
           contacts?: Json
           created_at?: string
           created_by?: string | null
+          discount_pct?: number
           id?: string
+          markup_multiplier?: number
           name?: string
           notes?: string | null
+          pricing_notes?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -547,6 +556,41 @@ export type Database = {
           },
         ]
       }
+      quote_events: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          performed_by: string | null
+          quote_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          performed_by?: string | null
+          quote_id: string
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          performed_by?: string | null
+          quote_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_events_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_lines: {
         Row: {
           ai_reasoning: string | null
@@ -627,6 +671,8 @@ export type Database = {
           internal_notes: string | null
           outcome_at: string | null
           outcome_reason: string | null
+          public_shared_at: string | null
+          public_token: string | null
           quote_number: number
           sent_at: string | null
           status: Database["public"]["Enums"]["quote_status"]
@@ -645,6 +691,8 @@ export type Database = {
           internal_notes?: string | null
           outcome_at?: string | null
           outcome_reason?: string | null
+          public_shared_at?: string | null
+          public_token?: string | null
           quote_number?: number
           sent_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
@@ -663,6 +711,8 @@ export type Database = {
           internal_notes?: string | null
           outcome_at?: string | null
           outcome_reason?: string | null
+          public_shared_at?: string | null
+          public_token?: string | null
           quote_number?: number
           sent_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
@@ -839,6 +889,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      gen_quote_public_token: { Args: never; Returns: string }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }

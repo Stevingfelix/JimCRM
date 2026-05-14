@@ -11,6 +11,7 @@ import {
   Users,
   Truck,
   LogOut,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/app/(auth)/login/actions";
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { href: "/parts", label: "Parts", Icon: Package },
   { href: "/customers", label: "Customers", Icon: Users },
   { href: "/vendors", label: "Vendors", Icon: Truck },
+  { href: "/analytics", label: "Analytics", Icon: BarChart3 },
 ];
 
 type Props = {

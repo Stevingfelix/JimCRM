@@ -7,6 +7,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SavedSearchesMenu } from "@/components/saved-searches-menu";
+import { getSavedSearches } from "@/app/(app)/saved-searches/actions";
 import { listParts } from "./queries";
 import { PartsSearch } from "./components/parts-search";
 import { NewPartDialog } from "./components/new-part-dialog";
@@ -22,10 +24,10 @@ export default async function PartsPage({
   searchParams: { q?: string; page?: string };
 }) {
   const page = Math.max(1, Number(searchParams.page) || 1);
-  const { rows, total, pageSize } = await listParts({
-    q: searchParams.q,
-    page,
-  });
+  const [{ rows, total, pageSize }, saved] = await Promise.all([
+    listParts({ q: searchParams.q, page }),
+    getSavedSearches("parts"),
+  ]);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
@@ -37,7 +39,20 @@ export default async function PartsPage({
             {total.toLocaleString()} total
           </p>
         </div>
-        <NewPartDialog />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/parts/import"
+            className="inline-flex h-9 items-center rounded-full border bg-background px-4 text-sm hover:bg-muted transition-colors"
+          >
+            Import CSV
+          </Link>
+          <SavedSearchesMenu
+            routeKey="parts"
+            routeBase="/parts"
+            initial={saved}
+          />
+          <NewPartDialog />
+        </div>
       </div>
 
       <PartsSearch />

@@ -1,0 +1,44 @@
+import Link from "next/link";
+import { ImportClient } from "./components/import-client";
+
+export default function PartsImportPage() {
+  return (
+    <div className="px-8 py-8 space-y-6 max-w-5xl">
+      <div className="flex items-center text-sm text-muted-foreground gap-1">
+        <Link href="/parts" className="hover:underline">
+          Parts
+        </Link>
+        <span>›</span>
+        <span className="text-foreground font-medium">Import from CSV</span>
+      </div>
+
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Bulk import</h1>
+        <p className="text-sm text-muted-foreground">
+          Paste or upload a CSV to create parts in bulk. Aliases are imported
+          in the same pass.
+        </p>
+      </div>
+
+      <div className="rounded-xl border bg-card p-5 space-y-3 text-sm">
+        <div className="font-medium">CSV format</div>
+        <p className="text-muted-foreground">
+          Required column: <code className="text-foreground">internal_pn</code>
+          . Optional: <code>description</code>, <code>internal_notes</code>,{" "}
+          <code>aliases</code>.
+        </p>
+        <p className="text-muted-foreground">
+          Aliases are pipe-separated triples of{" "}
+          <code>alias_pn/source_type/source_name</code>. Source types:{" "}
+          <code>customer</code>, <code>manufacturer</code>, <code>vendor</code>,{" "}
+          <code>other</code>.
+        </p>
+        <pre className="bg-muted/40 rounded-md p-3 text-xs overflow-auto">{`internal_pn,description,internal_notes,aliases
+CAP-2210,1/4-20 x 1" SHCS,Source from Fastenal,91251A537/manufacturer/McMaster|ACME-25-1-SHCS/customer/Acme
+CAP-1002,Nylon insert lock nut M6,,FS-NIL-M6/vendor/Fastenal`}</pre>
+      </div>
+
+      <ImportClient />
+    </div>
+  );
+}

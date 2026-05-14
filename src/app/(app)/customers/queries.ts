@@ -105,7 +105,14 @@ export async function listCustomers({
 }
 
 export type CustomerDetail = {
-  customer: { id: string; name: string; notes: string | null };
+  customer: {
+    id: string;
+    name: string;
+    notes: string | null;
+    markup_multiplier: number;
+    discount_pct: number;
+    pricing_notes: string | null;
+  };
   contacts: Array<{
     id: string;
     name: string | null;
@@ -129,11 +136,20 @@ export async function getCustomerDetail(
 
   const { data: customer, error } = await supabase
     .from("customers")
-    .select("id, name, notes")
+    .select("id, name, notes, markup_multiplier, discount_pct, pricing_notes")
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!customer) return null;
+
+  const customerNormalized = {
+    id: customer.id,
+    name: customer.name,
+    notes: customer.notes,
+    markup_multiplier: Number(customer.markup_multiplier ?? 1),
+    discount_pct: Number(customer.discount_pct ?? 0),
+    pricing_notes: customer.pricing_notes,
+  };
 
   const [contactsRes, quotesRes] = await Promise.all([
     supabase
@@ -174,7 +190,7 @@ export async function getCustomerDetail(
   );
 
   return {
-    customer,
+    customer: customerNormalized,
     contacts: contactsRes.data ?? [],
     recentQuotes,
   };

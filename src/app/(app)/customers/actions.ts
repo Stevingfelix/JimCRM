@@ -73,6 +73,9 @@ const UpdateCustomerSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(200),
   notes: z.string().trim().max(2000).nullable(),
+  markup_multiplier: z.coerce.number().min(0.5).max(5).default(1),
+  discount_pct: z.coerce.number().min(0).max(50).default(0),
+  pricing_notes: z.string().trim().max(2000).nullable(),
 });
 
 export async function updateCustomer(
@@ -90,6 +93,9 @@ export async function updateCustomer(
       .update({
         name: parsed.data.name,
         notes: parsed.data.notes,
+        markup_multiplier: parsed.data.markup_multiplier,
+        discount_pct: parsed.data.discount_pct,
+        pricing_notes: parsed.data.pricing_notes,
         updated_by: userId,
       })
       .eq("id", parsed.data.id);
