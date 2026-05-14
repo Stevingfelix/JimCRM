@@ -133,6 +133,12 @@ export type PartDetail = {
     customer_id: string;
     customer_name: string;
   }>;
+  attachments: Array<{
+    id: string;
+    drive_file_id: string;
+    name: string;
+    mime_type: string | null;
+  }>;
 };
 
 export async function getPartDetail(id: string): Promise<PartDetail | null> {
@@ -148,7 +154,7 @@ export async function getPartDetail(id: string): Promise<PartDetail | null> {
   if (error) throw new Error(error.message);
   if (!part) return null;
 
-  const [aliasesRes, linesRes] = await Promise.all([
+  const [aliasesRes, linesRes, attachmentsRes] = await Promise.all([
     supabase
       .from("part_aliases")
       .select("id, alias_pn, source_type, source_name")
@@ -162,10 +168,16 @@ export async function getPartDetail(id: string): Promise<PartDetail | null> {
       .eq("part_id", id)
       .order("created_at", { ascending: false })
       .limit(10),
+    supabase
+      .from("part_attachments")
+      .select("id, drive_file_id, name, mime_type")
+      .eq("part_id", id)
+      .order("created_at", { ascending: true }),
   ]);
 
   if (aliasesRes.error) throw new Error(aliasesRes.error.message);
   if (linesRes.error) throw new Error(linesRes.error.message);
+  if (attachmentsRes.error) throw new Error(attachmentsRes.error.message);
 
   type LineRow = {
     id: string;
@@ -197,5 +209,6 @@ export async function getPartDetail(id: string): Promise<PartDetail | null> {
     // The form-level Zod schema enforces this on writes.
     aliases: (aliasesRes.data ?? []) as PartDetail["aliases"],
     history,
+    attachments: attachmentsRes.data ?? [],
   };
 }

@@ -146,6 +146,68 @@ export async function updateAlias(
   }
 }
 
+const AddPartAttachmentSchema = z.object({
+  part_id: z.string().uuid(),
+  drive_file_id: z.string().min(1).max(200),
+  name: z.string().min(1).max(500),
+  mime_type: z.string().max(200).nullable(),
+});
+
+export async function addPartAttachment(
+  input: z.input<typeof AddPartAttachmentSchema>,
+): Promise<ActionResult<{ id: string }>> {
+  const parsed = AddPartAttachmentSchema.safeParse(input);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+  try {
+    const supabase = createClient();
+    const userId = await getCurrentUserId();
+    const { data, error } = await supabase
+      .from("part_attachments")
+      .insert({
+        part_id: parsed.data.part_id,
+        drive_file_id: parsed.data.drive_file_id,
+        name: parsed.data.name,
+        mime_type: parsed.data.mime_type,
+        created_by: userId,
+        updated_by: userId,
+      })
+      .select("id")
+      .single();
+    if (error) return err(error.code ?? "db_error", error.message);
+    revalidatePath(`/parts/${parsed.data.part_id}`);
+    return ok({ id: data.id });
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
+export async function deletePartAttachment({
+  id,
+  part_id,
+}: {
+  id: string;
+  part_id: string;
+}): Promise<ActionResult<void>> {
+  if (
+    !z.string().uuid().safeParse(id).success ||
+    !z.string().uuid().safeParse(part_id).success
+  ) {
+    return err("validation", "Invalid id");
+  }
+  try {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("part_attachments")
+      .delete()
+      .eq("id", id);
+    if (error) return err(error.code ?? "db_error", error.message);
+    revalidatePath(`/parts/${part_id}`);
+    return ok(undefined);
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
 export async function deleteAlias({
   id,
   part_id,

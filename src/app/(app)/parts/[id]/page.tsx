@@ -12,6 +12,7 @@ import {
 import { getPartDetail } from "../queries";
 import { PartForm } from "./components/part-form";
 import { AliasesEditor } from "./components/aliases-editor";
+import { PartAttachmentsSection } from "./components/part-attachments-section";
 
 function formatDate(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
@@ -118,6 +119,19 @@ export default async function PartDetailPage({
             </TableBody>
           </Table>
         </div>
+      </section>
+
+      <Separator />
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold tracking-tight">Attachments</h2>
+        <p className="text-xs text-muted-foreground">
+          Spec sheets, photos, or any Drive file associated with this part.
+        </p>
+        <PartAttachmentsSection
+          partId={detail.part.id}
+          attachments={detail.attachments}
+        />
       </section>
     </div>
   );

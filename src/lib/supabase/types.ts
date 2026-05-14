@@ -342,6 +342,50 @@ export type Database = {
           },
         ]
       }
+      part_attachments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          drive_file_id: string
+          id: string
+          mime_type: string | null
+          name: string
+          part_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          drive_file_id: string
+          id?: string
+          mime_type?: string | null
+          name: string
+          part_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          drive_file_id?: string
+          id?: string
+          mime_type?: string | null
+          name?: string
+          part_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_attachments_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parts: {
         Row: {
           created_at: string

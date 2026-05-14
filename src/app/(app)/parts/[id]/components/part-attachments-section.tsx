@@ -1,10 +1,7 @@
 "use client";
 
 import { DrivePicker } from "@/components/drive-picker";
-import {
-  addQuoteAttachment,
-  deleteQuoteAttachment,
-} from "../../actions";
+import { addPartAttachment, deletePartAttachment } from "../actions";
 
 type Attachment = {
   id: string;
@@ -13,27 +10,25 @@ type Attachment = {
   mime_type: string | null;
 };
 
-export function AttachmentsSection({
-  quoteId,
+export function PartAttachmentsSection({
+  partId,
   attachments,
 }: {
-  quoteId: string;
+  partId: string;
   attachments: Attachment[];
 }) {
   return (
     <DrivePicker
       attachments={attachments}
       onAttach={async (file) =>
-        addQuoteAttachment({
-          quote_id: quoteId,
+        addPartAttachment({
+          part_id: partId,
           drive_file_id: file.drive_file_id,
           name: file.name,
           mime_type: file.mime_type,
         })
       }
-      onDelete={async (id) =>
-        deleteQuoteAttachment({ id, quote_id: quoteId })
-      }
+      onDelete={async (id) => deletePartAttachment({ id, part_id: partId })}
     />
   );
 }
