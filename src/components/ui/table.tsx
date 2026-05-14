@@ -78,12 +78,15 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   )
 }
 
+// Cells wrap by default so long customer / part descriptions don't force
+// the whole table into horizontal scroll. Cells that should stay on one
+// line (dates, money, status badges) opt in with `whitespace-nowrap`.
 function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return (
     <td
       data-slot="table-cell"
       className={cn(
-        "px-4 py-5 align-middle whitespace-nowrap text-foreground/90 [&:has([role=checkbox])]:pr-0",
+        "px-4 py-5 align-middle text-foreground/90 [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}

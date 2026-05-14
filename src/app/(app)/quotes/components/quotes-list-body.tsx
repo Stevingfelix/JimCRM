@@ -40,7 +40,7 @@ export function QuotesListBody({ rows, emptyMessage }: Props) {
               className="hover:bg-muted/40 cursor-pointer"
               onClick={() => setPeekId(row.id)}
             >
-              <TableCell className="font-medium tabular-nums">
+              <TableCell className="font-medium tabular-nums whitespace-nowrap">
                 <Link
                   href={`/quotes/${row.id}`}
                   className="hover:underline"
@@ -58,21 +58,21 @@ export function QuotesListBody({ rows, emptyMessage }: Props) {
                   {row.customer_name}
                 </Link>
               </TableCell>
-              <TableCell>
+              <TableCell className="whitespace-nowrap">
                 <Badge variant="outline" className="capitalize">
                   {row.status}
                 </Badge>
               </TableCell>
-              <TableCell className="text-sm text-muted-foreground tabular-nums">
+              <TableCell className="text-sm text-muted-foreground tabular-nums whitespace-nowrap">
                 {formatDate(row.created_at)}
               </TableCell>
-              <TableCell className="text-sm text-muted-foreground tabular-nums">
+              <TableCell className="text-sm text-muted-foreground tabular-nums whitespace-nowrap">
                 {formatDate(row.validity_date)}
               </TableCell>
-              <TableCell className="text-right tabular-nums text-sm">
+              <TableCell className="text-right tabular-nums text-sm whitespace-nowrap">
                 {row.line_count}
               </TableCell>
-              <TableCell className="text-right tabular-nums text-sm">
+              <TableCell className="text-right tabular-nums text-sm whitespace-nowrap">
                 {row.total != null ? formatMoney(row.total) : "—"}
               </TableCell>
             </TableRow>

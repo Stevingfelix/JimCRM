@@ -97,7 +97,7 @@ export default async function PartsPage({
               ) : (
                 rows.map((row) => (
                   <TableRow key={row.id} className="hover:bg-muted/40">
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium whitespace-nowrap">
                       <Link
                         href={`/parts/${row.id}`}
                         className="hover:underline"
@@ -105,13 +105,13 @@ export default async function PartsPage({
                         {row.internal_pn}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-[600px] truncate">
+                    <TableCell className="text-sm text-muted-foreground max-w-[600px]">
                       {row.description ?? "—"}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-sm">
+                    <TableCell className="text-right tabular-nums text-sm whitespace-nowrap">
                       {row.alias_count || "—"}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground tabular-nums">
+                    <TableCell className="text-sm text-muted-foreground tabular-nums whitespace-nowrap">
                       {formatDate(row.last_quote_at)}
                     </TableCell>
                   </TableRow>

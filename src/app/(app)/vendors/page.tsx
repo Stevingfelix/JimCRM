@@ -117,10 +117,10 @@ export default async function VendorsPage({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-sm">
+                    <TableCell className="text-right tabular-nums text-sm whitespace-nowrap">
                       {row.parts_quoted || "—"}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground tabular-nums">
+                    <TableCell className="text-sm text-muted-foreground tabular-nums whitespace-nowrap">
                       {formatDate(row.last_quote_at)}
                     </TableCell>
                   </TableRow>
