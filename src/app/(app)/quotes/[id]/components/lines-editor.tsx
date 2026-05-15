@@ -385,28 +385,57 @@ function VendorRecCallout({
   recommended: VendorRecommendation;
   alternatives: VendorRecommendation[];
 }) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
-    <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap">
-      <span className="text-emerald-700 dark:text-emerald-500 font-medium">
-        Recommended vendor:
-      </span>
-      <span className="text-foreground font-medium">
-        {recommended.vendor_name}
-      </span>
-      <span className="tabular-nums">{formatMoney(recommended.unit_price)}</span>
-      {recommended.lead_time_days != null && (
-        <span>· {recommended.lead_time_days}d lead</span>
-      )}
-      {alternatives.length > 0 && (
-        <span className="text-muted-foreground/80">
-          (alt:{" "}
-          {alternatives
-            .map(
-              (a) => `${a.vendor_name} ${formatMoney(a.unit_price)}`,
-            )
-            .join(" · ")}
-          )
+    <div className="rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/30 px-3 py-2 text-xs">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="inline-flex size-4 items-center justify-center rounded bg-emerald-600 text-white text-[9px] font-bold shrink-0">
+            V
+          </span>
+          <span className="font-medium text-foreground">
+            {recommended.vendor_name}
+          </span>
+        </div>
+        <span className="tabular-nums font-medium text-emerald-700 dark:text-emerald-400">
+          {formatMoney(recommended.unit_price)}
         </span>
+        {recommended.lead_time_days != null && (
+          <span className="text-muted-foreground">
+            {recommended.lead_time_days}d lead
+          </span>
+        )}
+        {alternatives.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="ml-auto text-muted-foreground hover:text-foreground"
+          >
+            +{alternatives.length} more {expanded ? "▴" : "▾"}
+          </button>
+        )}
+      </div>
+      {expanded && alternatives.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-900 space-y-1">
+          {alternatives.map((a) => (
+            <div
+              key={a.vendor_id}
+              className="flex items-center gap-3 text-muted-foreground"
+            >
+              <span className="inline-flex size-4 items-center justify-center rounded bg-muted text-[9px] font-bold shrink-0">
+                V
+              </span>
+              <span className="text-foreground">{a.vendor_name}</span>
+              <span className="tabular-nums">
+                {formatMoney(a.unit_price)}
+              </span>
+              {a.lead_time_days != null && (
+                <span>{a.lead_time_days}d lead</span>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
