@@ -118,6 +118,7 @@ export async function processMessage(
     mime_type: a.mime_type,
     size: a.size,
     kind: attachmentKind({ filename: a.filename, mimeType: a.mime_type }),
+    attachment_id: a.attachment_id,
   }));
 
   const { data: inserted, error: insertErr } = await supabase
@@ -170,22 +171,30 @@ export async function processMessage(
   // Gate 2: Haiku triage. Cheap classifier decides if this is worth a Sonnet
   // call at all. Skips marketing / transactional / OOO / non-quote business
   // mail before it hits the expensive extractor.
+  //
+  // Fast path: emails with PDF/Excel attachments always go to extraction —
+  // at CAP these are almost always quote documents. No point asking Haiku.
+  const hasQuoteAttachments = attachmentMeta.some(
+    (a) => a.kind === "pdf" || a.kind === "excel",
+  );
   let triage: TriageVerdict | null = null;
-  try {
-    triage = await triageEmail({
-      subject: msg.subject,
-      from_email: msg.from_email,
-      from_name: msg.from_name,
-      body_preview: msg.body_text.slice(0, 800),
-      attachment_meta: attachmentMeta.map((a) => ({
-        filename: a.filename,
-        mime_type: a.mime_type,
-        kind: a.kind ?? null,
-      })),
-    });
-  } catch {
-    // Fail open — if triage breaks, fall through to extraction.
-    triage = null;
+  if (!hasQuoteAttachments) {
+    try {
+      triage = await triageEmail({
+        subject: msg.subject,
+        from_email: msg.from_email,
+        from_name: msg.from_name,
+        body_preview: msg.body_text.slice(0, 800),
+        attachment_meta: attachmentMeta.map((a) => ({
+          filename: a.filename,
+          mime_type: a.mime_type,
+          kind: a.kind ?? null,
+        })),
+      });
+    } catch {
+      // Fail open — if triage breaks, fall through to extraction.
+      triage = null;
+    }
   }
 
   if (triage && triage.verdict === "skip") {

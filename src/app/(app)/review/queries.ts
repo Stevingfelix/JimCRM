@@ -53,6 +53,21 @@ export async function listReviewQueue(): Promise<ReviewListRow[]> {
   }));
 }
 
+export type AttachmentMeta = {
+  filename: string;
+  mime_type: string | null;
+  size: number | null;
+  kind: "pdf" | "excel" | null;
+  attachment_id?: string;
+};
+
+export type AttachmentResult = {
+  filename: string;
+  kind: "pdf" | "excel" | null;
+  extraction: ExtractionResult | null;
+  error: string | null;
+};
+
 export type ReviewDetail = {
   id: string;
   gmail_msg_id: string;
@@ -68,6 +83,8 @@ export type ReviewDetail = {
     | { customer_id: string; customer_name: string }
     | null;
   error: string | null;
+  attachments_meta: AttachmentMeta[];
+  attachments: AttachmentResult[];
 };
 
 export async function getReviewDetail(id: string): Promise<ReviewDetail | null> {
@@ -92,6 +109,8 @@ export async function getReviewDetail(id: string): Promise<ReviewDetail | null> 
       customer_name: string;
     } | null;
     error?: string;
+    attachments_meta?: AttachmentMeta[];
+    attachments?: AttachmentResult[];
   };
   const p = (data.parsed_payload as Payload | null) ?? {};
 
@@ -108,6 +127,8 @@ export async function getReviewDetail(id: string): Promise<ReviewDetail | null> 
     enriched: p.enriched ?? [],
     matched_customer: p.matched_customer ?? null,
     error: p.error ?? null,
+    attachments_meta: p.attachments_meta ?? [],
+    attachments: p.attachments ?? [],
   };
 }
 

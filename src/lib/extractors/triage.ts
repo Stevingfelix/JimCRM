@@ -72,13 +72,15 @@ CAP's watched inbox receives:
 - TRANSACTIONAL — automated notifications (bank statements, password resets, calendar invites, "your account has been updated").
 - SUPPORT / OOO — automated replies, out-of-office, ticket confirmations.
 
-Return verdict="extract" ONLY when the email is a CUSTOMER RFQ or a VENDOR QUOTE with concrete line items (in body or attachment).
+Return verdict="extract" when:
+- The email is a CUSTOMER RFQ or a VENDOR QUOTE with concrete line items (in body or attachment).
+- The email has PDF or Excel attachments. These are almost always quote documents at CAP — always extract when attachments are present, even if the body text is minimal ("see attached", "please quote per attached", etc.).
 
 Return verdict="skip" for everything else, including:
-- Quoted-thread-only emails (just signature + boilerplate replies)
-- General business mail without any PN/qty/price content
+- Quoted-thread-only emails (just signature + boilerplate replies) WITH NO attachments
+- General business mail without any PN/qty/price content AND no attachments
 - Marketing, newsletters, transactional, support, OOO
-- Senders like "no-reply", "noreply", "billing", "support", "notifications" (UNLESS the subject + body clearly indicate a vendor quote)
+- Senders like "no-reply", "noreply", "billing", "support", "notifications" (UNLESS the subject + body clearly indicate a vendor quote OR the email has PDF/Excel attachments)
 
 When in doubt between extract vs skip, prefer "extract" — the downstream extractor will return lines:[] for non-quotes anyway. But for unambiguous noise, skip decisively.`;
 
