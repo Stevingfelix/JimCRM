@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
+import { getCompanyInfo } from "@/lib/company";
 import { getQuoteDetail } from "../queries";
 import { QuoteHeader } from "./components/quote-header";
+import { QuoteSummaryCard } from "./components/quote-summary-card";
 import { LinesEditor } from "./components/lines-editor";
 import { NotesSection } from "./components/notes-section";
 import { AttachmentsSection } from "./components/attachments-section";
@@ -12,7 +14,10 @@ export default async function QuoteDetailPage({
 }: {
   params: { id: string };
 }) {
-  const detail = await getQuoteDetail(params.id);
+  const [detail, company] = await Promise.all([
+    getQuoteDetail(params.id),
+    getCompanyInfo(),
+  ]);
   if (!detail) notFound();
 
   return (
@@ -26,6 +31,12 @@ export default async function QuoteDetailPage({
           part_description: l.part_description,
           qty: l.qty,
         }))}
+      />
+
+      <QuoteSummaryCard
+        quote={detail.quote}
+        lines={detail.lines}
+        company={company}
       />
 
       <Separator />

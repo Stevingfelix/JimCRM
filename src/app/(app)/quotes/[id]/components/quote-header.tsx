@@ -4,8 +4,13 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -15,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { formatQuoteNumber } from "@/lib/format";
 import {
   duplicateQuoteAndRedirect,
@@ -32,6 +38,16 @@ const STATUSES = ["draft", "sent", "won", "lost", "expired"] as const;
 type Status = (typeof STATUSES)[number];
 
 const TERMINAL_STATUSES = new Set<Status>(["won", "lost", "expired"]);
+
+const STATUS_STYLES: Record<Status, string> = {
+  draft:
+    "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700",
+  sent: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-900",
+  won: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-900",
+  lost: "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-200 dark:border-rose-900",
+  expired:
+    "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700",
+};
 
 type Props = {
   quote: {
@@ -104,21 +120,32 @@ export function QuoteHeader({ quote, templates, lines }: Props) {
     });
   };
 
-  const onStatusChange = (next: string | null) => {
-    if (!next) return;
-    const v = next as Status;
-    if (TERMINAL_STATUSES.has(v)) {
-      // Prompt for reason before committing the status change.
-      setPendingOutcome(v as Outcome);
+  const onStatusChange = (next: Status) => {
+    if (TERMINAL_STATUSES.has(next)) {
+      setPendingOutcome(next as Outcome);
       return;
     }
-    setStatus(v);
-    applyStatus(v, null);
+    setStatus(next);
+    applyStatus(next, null);
   };
 
   const onSend = () => {
     window.open(`/api/quotes/${quote.id}/pdf`, "_blank");
     applyStatus("sent", null);
+  };
+
+  const onShare = async () => {
+    if (!quote.public_token) {
+      toast.error("This quote has no public link yet — save it first.");
+      return;
+    }
+    const url = `${window.location.origin}/q/${quote.public_token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied");
+    } catch {
+      toast.error("Couldn't copy — link: " + url);
+    }
   };
 
   const onDuplicate = () => {
@@ -127,7 +154,6 @@ export function QuoteHeader({ quote, templates, lines }: Props) {
       if (result && !result.ok) {
         toast.error(result.error.message);
       }
-      // success → server redirect handles navigation
     });
   };
 
@@ -145,29 +171,70 @@ export function QuoteHeader({ quote, templates, lines }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center text-sm text-muted-foreground gap-1">
-          <Link href="/quotes" className="hover:underline">
-            Quotes
-          </Link>
-          <span>›</span>
-          <span className="text-foreground font-medium tabular-nums">
-            {formatQuoteNumber(quote.quote_number)}
-          </span>
-          <span className="text-muted-foreground">·</span>
-          <Link
-            href={`/customers/${quote.customer_id}`}
-            className="hover:underline"
+      {/* Breadcrumb */}
+      <div className="flex items-center text-sm text-muted-foreground gap-1">
+        <Link href="/quotes" className="hover:underline">
+          Quotes
+        </Link>
+        <span>›</span>
+        <span className="text-foreground font-medium tabular-nums">
+          {formatQuoteNumber(quote.quote_number)}
+        </span>
+        <span className="text-muted-foreground">·</span>
+        <Link
+          href={`/customers/${quote.customer_id}`}
+          className="hover:underline"
+        >
+          {quote.customer_name}
+        </Link>
+      </div>
+
+      {/* Action toolbar */}
+      <div className="rounded-xl border bg-card px-3 py-2.5 sm:px-4 flex flex-wrap items-center gap-2">
+        {/* Status pill dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            disabled={statusPending}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium capitalize transition hover:opacity-80 disabled:opacity-60",
+              STATUS_STYLES[status],
+            )}
           >
-            {quote.customer_name}
-          </Link>
-          <Badge variant="outline" className="ml-2 capitalize">
             {status}
-          </Badge>
-        </div>
-        <div className="flex items-center gap-2">
+            <span aria-hidden className="text-[10px] opacity-70">
+              ▾
+            </span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {STATUSES.map((s) => (
+              <DropdownMenuItem
+                key={s}
+                onSelect={() => onStatusChange(s)}
+                disabled={s === status}
+                className="capitalize"
+              >
+                {s}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={onSend}>
             Send ↗
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onShare}
+            disabled={!quote.public_token}
+            title={
+              quote.public_token
+                ? "Copy customer-facing link"
+                : "No public link yet"
+            }
+          >
+            Share
           </Button>
           <RfqDialog
             quoteId={quote.id}
@@ -193,9 +260,12 @@ export function QuoteHeader({ quote, templates, lines }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 max-w-3xl">
+      {/* Secondary settings strip — validity + template */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
         <div className="grid gap-1.5">
-          <Label htmlFor="validity">Validity date</Label>
+          <Label htmlFor="validity" className="text-xs text-muted-foreground">
+            Validity date
+          </Label>
           <Input
             id="validity"
             type="date"
@@ -205,26 +275,9 @@ export function QuoteHeader({ quote, templates, lines }: Props) {
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="status">Status</Label>
-          <Select
-            value={status}
-            onValueChange={onStatusChange}
-            disabled={statusPending}
-          >
-            <SelectTrigger id="status">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUSES.map((s) => (
-                <SelectItem key={s} value={s} className="capitalize">
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="template">PDF template</Label>
+          <Label htmlFor="template" className="text-xs text-muted-foreground">
+            PDF template
+          </Label>
           <Select
             value={templateId || undefined}
             onValueChange={(v) => {

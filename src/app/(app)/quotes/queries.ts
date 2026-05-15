@@ -208,12 +208,20 @@ export type QuoteAttachment = {
   mime_type: string | null;
 };
 
+export type QuoteCustomerContact = {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+};
+
 export type QuoteDetail = {
   quote: {
     id: string;
     quote_number: number;
     customer_id: string;
     customer_name: string;
+    customer_billing_address: string | null;
+    customer_primary_contact: QuoteCustomerContact | null;
     status: QuoteStatus;
     validity_date: string | null;
     customer_notes: string | null;
@@ -234,7 +242,7 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
   const { data: quote, error } = await supabase
     .from("quotes")
     .select(
-      "id, quote_number, customer_id, status, validity_date, customer_notes, internal_notes, template_id, sent_at, created_at, customers!inner(name)",
+      "id, quote_number, customer_id, status, validity_date, customer_notes, internal_notes, template_id, sent_at, created_at, public_token, customers!inner(name, billing_address, contacts)",
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -254,9 +262,33 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
     sent_at: string | null;
     created_at: string;
     public_token: string | null;
-    customers: { name: string };
+    customers: {
+      name: string;
+      billing_address: string | null;
+      contacts: unknown;
+    };
   };
   const q = quote as unknown as QuoteRow;
+
+  // contacts is stored as JSON (array of {name, email, phone, is_primary?})
+  let primaryContact: QuoteCustomerContact | null = null;
+  if (Array.isArray(q.customers.contacts) && q.customers.contacts.length > 0) {
+    type ContactRow = {
+      name?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      is_primary?: boolean;
+    };
+    const contacts = q.customers.contacts as ContactRow[];
+    const primary = contacts.find((c) => c?.is_primary) ?? contacts[0];
+    if (primary) {
+      primaryContact = {
+        name: primary.name ?? null,
+        email: primary.email ?? null,
+        phone: primary.phone ?? null,
+      };
+    }
+  }
 
   const [linesRes, templatesRes, attachmentsRes] = await Promise.all([
     supabase
@@ -376,6 +408,8 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
       quote_number: q.quote_number,
       customer_id: q.customer_id,
       customer_name: q.customers.name,
+      customer_billing_address: q.customers.billing_address,
+      customer_primary_contact: primaryContact,
       status: q.status,
       validity_date: q.validity_date,
       customer_notes: q.customer_notes,
