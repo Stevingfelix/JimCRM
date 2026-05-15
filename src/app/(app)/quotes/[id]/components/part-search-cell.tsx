@@ -105,7 +105,7 @@ export function PartSearchCell({
         className="h-8"
       />
       {open && results.length > 0 && (
-        <div className="absolute z-30 top-full left-0 right-0 mt-1 rounded-md border bg-popover shadow-md max-h-72 overflow-auto">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-md border bg-popover shadow-lg max-h-72 overflow-auto">
           {results.map((r, idx) => (
             <button
               key={r.id}

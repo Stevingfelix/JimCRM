@@ -332,10 +332,9 @@ export function QuoteBuilder({
           </div>
         </section>
 
-        {/* LINE ITEMS — overflow stays visible so the part-search popover
-            can extend below row boundaries. Header + footer round their own
-            corners to preserve the card look. */}
-        <section className="rounded-xl border bg-card">
+        {/* LINE ITEMS — overflow-visible so the part-search dropdown
+            can extend outside the card boundary. */}
+        <section className="rounded-xl border bg-card overflow-visible">
           <div className="grid grid-cols-[28px_1fr_90px_120px_110px_36px] gap-2 px-4 py-2.5 border-b text-[10px] font-semibold tracking-wider uppercase text-muted-foreground rounded-t-xl">
             <span />
             <span>Item description</span>
@@ -737,7 +736,7 @@ function PartCell({
         />
       )}
       {open && !line.part_id && (
-        <div className="absolute z-30 left-0 right-0 mt-1 rounded-lg border bg-card shadow-xl overflow-hidden">
+        <div className="absolute z-50 left-0 right-0 mt-1 rounded-lg border bg-card shadow-xl overflow-hidden">
           <div className="px-3 py-2 border-b flex items-center gap-2">
             <Search className="size-3.5 text-muted-foreground shrink-0" />
             <Input

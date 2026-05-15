@@ -43,7 +43,7 @@ export function LinesEditor({ quoteId, initialLines }: Props) {
 
   return (
     <div className="space-y-2">
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-visible">
         <Table>
           <TableHeader>
             <TableRow>
