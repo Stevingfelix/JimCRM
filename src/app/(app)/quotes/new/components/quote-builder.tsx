@@ -26,7 +26,12 @@ import {
 import { NewCustomerDialog } from "@/app/(app)/customers/components/new-customer-dialog";
 import { cn } from "@/lib/utils";
 import { formatMoney, formatQuoteNumber } from "@/lib/format";
-import { searchPartsAction, searchCustomersAction } from "../../lookups";
+import {
+  searchPartsAction,
+  searchCustomersAction,
+  getVendorRecsAction,
+  type QuickVendorRec,
+} from "../../lookups";
 import { QuoteCreatedDialog } from "./quote-created-dialog";
 import {
   createQuoteWithLines,
@@ -526,65 +531,137 @@ function LineRow({
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
+  const [vendorRecs, setVendorRecs] = useState<QuickVendorRec[]>([]);
+  const [vendorExpanded, setVendorExpanded] = useState(false);
+  const prevPartId = useRef<string | null>(null);
+
+  // Fetch vendor recs when part changes
+  useEffect(() => {
+    if (line.part_id && line.part_id !== prevPartId.current) {
+      prevPartId.current = line.part_id;
+      getVendorRecsAction(line.part_id).then(setVendorRecs);
+    } else if (!line.part_id) {
+      prevPartId.current = null;
+      setVendorRecs([]);
+    }
+  }, [line.part_id]);
+
   const total =
     line.unit_price != null ? line.qty * line.unit_price : null;
+  const best = vendorRecs[0] ?? null;
+  const alts = vendorRecs.slice(1);
+
   return (
-    <li className="grid grid-cols-[28px_1fr_90px_120px_110px_36px] gap-2 px-4 py-2.5 items-center">
-      <div className="flex flex-col items-center text-muted-foreground">
+    <li>
+      <div className="grid grid-cols-[28px_1fr_90px_120px_110px_36px] gap-2 px-4 py-2.5 items-center">
+        <div className="flex flex-col items-center text-muted-foreground">
+          <button
+            type="button"
+            onClick={onMoveUp}
+            disabled={!canMoveUp}
+            className="size-4 grid place-items-center hover:text-foreground disabled:opacity-30"
+            aria-label="Move up"
+          >
+            <GripVertical className="size-3" />
+          </button>
+          <span className="text-[10px] tabular-nums">{index + 1}</span>
+          <button
+            type="button"
+            onClick={onMoveDown}
+            disabled={!canMoveDown}
+            className="size-4 grid place-items-center hover:text-foreground disabled:opacity-30"
+            aria-label="Move down"
+          >
+            <GripVertical className="size-3" />
+          </button>
+        </div>
+        <PartCell line={line} onUpdate={onUpdate} />
+        <Input
+          type="number"
+          min={0}
+          step={1}
+          value={line.qty}
+          onChange={(e) =>
+            onUpdate({ qty: Math.max(0, Number(e.target.value) || 0) })
+          }
+          className="h-9 text-right tabular-nums"
+        />
+        <Input
+          type="number"
+          min={0}
+          step="0.01"
+          value={line.unit_price ?? ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            onUpdate({ unit_price: v === "" ? null : Number(v) });
+          }}
+          placeholder="0.00"
+          className="h-9 text-right tabular-nums"
+        />
+        <div className="text-right text-sm font-medium tabular-nums">
+          {total != null ? formatMoney(total) : "—"}
+        </div>
         <button
           type="button"
-          onClick={onMoveUp}
-          disabled={!canMoveUp}
-          className="size-4 grid place-items-center hover:text-foreground disabled:opacity-30"
-          aria-label="Move up"
+          onClick={onRemove}
+          className="size-8 grid place-items-center text-muted-foreground hover:text-destructive rounded"
+          aria-label="Remove line"
         >
-          <GripVertical className="size-3" />
-        </button>
-        <span className="text-[10px] tabular-nums">{index + 1}</span>
-        <button
-          type="button"
-          onClick={onMoveDown}
-          disabled={!canMoveDown}
-          className="size-4 grid place-items-center hover:text-foreground disabled:opacity-30"
-          aria-label="Move down"
-        >
-          <GripVertical className="size-3" />
+          <Trash2 className="size-4" />
         </button>
       </div>
-      <PartCell line={line} onUpdate={onUpdate} />
-      <Input
-        type="number"
-        min={0}
-        step={1}
-        value={line.qty}
-        onChange={(e) =>
-          onUpdate({ qty: Math.max(0, Number(e.target.value) || 0) })
-        }
-        className="h-9 text-right tabular-nums"
-      />
-      <Input
-        type="number"
-        min={0}
-        step="0.01"
-        value={line.unit_price ?? ""}
-        onChange={(e) => {
-          const v = e.target.value;
-          onUpdate({ unit_price: v === "" ? null : Number(v) });
-        }}
-        placeholder="0.00"
-        className="h-9 text-right tabular-nums"
-      />
-      <div className="text-right text-sm font-medium tabular-nums">
-        {total != null ? formatMoney(total) : "—"}
-      </div>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="size-8 grid place-items-center text-muted-foreground hover:text-destructive rounded"
-        aria-label="Remove line"
-      >
-        <Trash2 className="size-4" />
-      </button>
+      {best && (
+        <div className="mx-4 mb-2 rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/30 px-3 py-2 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex size-4 items-center justify-center rounded bg-emerald-600 text-white text-[9px] font-bold shrink-0">
+                V
+              </span>
+              <span className="font-medium text-foreground">
+                {best.vendor_name}
+              </span>
+            </div>
+            <span className="tabular-nums font-medium text-emerald-700 dark:text-emerald-400">
+              {formatMoney(best.unit_price)}
+            </span>
+            {best.lead_time_days != null && (
+              <span className="text-muted-foreground">
+                {best.lead_time_days}d lead
+              </span>
+            )}
+            {alts.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setVendorExpanded((v) => !v)}
+                className="ml-auto text-muted-foreground hover:text-foreground"
+              >
+                +{alts.length} more {vendorExpanded ? "▴" : "▾"}
+              </button>
+            )}
+          </div>
+          {vendorExpanded && alts.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-900 space-y-1">
+              {alts.map((a) => (
+                <div
+                  key={a.vendor_name}
+                  className="flex items-center gap-3 text-muted-foreground"
+                >
+                  <span className="inline-flex size-4 items-center justify-center rounded bg-muted text-[9px] font-bold shrink-0">
+                    V
+                  </span>
+                  <span className="text-foreground">{a.vendor_name}</span>
+                  <span className="tabular-nums">
+                    {formatMoney(a.unit_price)}
+                  </span>
+                  {a.lead_time_days != null && (
+                    <span>{a.lead_time_days}d lead</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </li>
   );
 }
