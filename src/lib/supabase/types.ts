@@ -368,6 +368,33 @@ export type Database = {
         }
         Relationships: []
       }
+      known_noise_senders: {
+        Row: {
+          first_rejected_at: string
+          last_rejected_at: string
+          rejected_count: number
+          sender_email: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          first_rejected_at?: string
+          last_rejected_at?: string
+          rejected_count?: number
+          sender_email: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          first_rejected_at?: string
+          last_rejected_at?: string
+          rejected_count?: number
+          sender_email?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       llm_calls: {
         Row: {
           cache_creation_input_tokens: number
@@ -456,6 +483,69 @@ export type Database = {
             columns: ["part_id"]
             isOneToOne: false
             referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      part_alias_suggestions: {
+        Row: {
+          alias_pn: string
+          created_at: string
+          created_by: string | null
+          id: string
+          part_id: string
+          raw_text: string | null
+          reasoning: string | null
+          source_event_id: string | null
+          source_name: string | null
+          source_type: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          alias_pn: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          part_id: string
+          raw_text?: string | null
+          reasoning?: string | null
+          source_event_id?: string | null
+          source_name?: string | null
+          source_type?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          alias_pn?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          part_id?: string
+          raw_text?: string | null
+          reasoning?: string | null
+          source_event_id?: string | null
+          source_name?: string | null
+          source_type?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_alias_suggestions_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "part_alias_suggestions_source_event_id_fkey"
+            columns: ["source_event_id"]
+            isOneToOne: false
+            referencedRelation: "email_events"
             referencedColumns: ["id"]
           },
         ]

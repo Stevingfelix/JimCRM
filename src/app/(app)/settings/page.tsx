@@ -6,6 +6,7 @@ import {
   UserCircle,
   Wrench,
   ArrowRight,
+  ShieldOff,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,13 @@ const SECTIONS = [
     blurb:
       "Configure column names and order to match your ERP's import format.",
     Icon: FileSpreadsheet,
+  },
+  {
+    href: "/settings/sender-blocklist",
+    title: "Sender blocklist",
+    blurb:
+      "Senders auto-added when you reject their emails in the review queue. Future emails from them are skipped before any LLM runs.",
+    Icon: ShieldOff,
   },
 ];
 
