@@ -158,11 +158,11 @@ export function LinesEditor({ quoteId, initialLines }: Props) {
           <TableHeader>
             <TableRow>
               <TableHead className="w-[40px]">#</TableHead>
-              <TableHead className="w-[260px]">Part</TableHead>
+              <TableHead className="w-[240px]">Part</TableHead>
               <TableHead>Description</TableHead>
-              <TableHead className="w-[90px] text-right">Qty</TableHead>
-              <TableHead className="w-[120px] text-right">Unit $</TableHead>
-              <TableHead className="w-[110px] text-right">Line $</TableHead>
+              <TableHead className="w-[80px] text-right">Qty</TableHead>
+              <TableHead className="w-[200px] text-right">Unit $</TableHead>
+              <TableHead className="w-[120px] text-right">Line $</TableHead>
               <TableHead className="w-[60px]" />
             </TableRow>
           </TableHeader>
@@ -330,61 +330,65 @@ function LineRow({
           />
         </TableCell>
         <TableCell className="py-2">
-          <Input
-            type="number"
-            step="0.0001"
-            min="0"
-            value={unitPrice}
-            onChange={(e) => setUnitPrice(e.target.value)}
-            onBlur={persist}
-            className="h-8 text-right tabular-nums"
-          />
-          <div className="mt-1 flex items-center justify-end gap-2 text-[11px]">
-            {aiSuggest != null && (
-              <span className="text-muted-foreground tabular-nums">
-                💡 {formatMoney(aiSuggest)}
-                {initial.ai_reasoning && (
-                  <span title={initial.ai_reasoning}> ⓘ</span>
-                )}
-                {(unitPrice === "" ||
-                  (aiSuggest !== Number(unitPrice) && !Number.isNaN(aiSuggest))) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUnitPrice(String(aiSuggest));
-                      setTimeout(persist, 0);
-                    }}
-                    className="ml-1 underline text-foreground/70 hover:text-foreground"
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              step="0.0001"
+              min="0"
+              value={unitPrice}
+              onChange={(e) => setUnitPrice(e.target.value)}
+              onBlur={persist}
+              className="h-8 text-right tabular-nums w-[100px]"
+            />
+            <div className="flex items-center gap-1.5 text-[11px] whitespace-nowrap shrink-0">
+              {aiSuggest != null && (
+                <>
+                  <span
+                    className="text-muted-foreground tabular-nums"
+                    title={initial.ai_reasoning ?? undefined}
                   >
-                    use
-                  </button>
-                )}
-              </span>
-            )}
-            {partId && (
-              <button
-                type="button"
-                onClick={() => {
-                  startSuggest(async () => {
-                    const result = await suggestPriceForLine({
-                      line_id: initial.id,
-                      quote_id: quoteId,
+                    💡 {formatMoney(aiSuggest)}
+                  </span>
+                  {(unitPrice === "" ||
+                    (aiSuggest !== Number(unitPrice) && !Number.isNaN(aiSuggest))) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUnitPrice(String(aiSuggest));
+                        setTimeout(persist, 0);
+                      }}
+                      className="underline text-foreground/70 hover:text-foreground"
+                    >
+                      use
+                    </button>
+                  )}
+                </>
+              )}
+              {partId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    startSuggest(async () => {
+                      const result = await suggestPriceForLine({
+                        line_id: initial.id,
+                        quote_id: quoteId,
+                      });
+                      if (!result.ok) toast.error(result.error.message);
+                      else {
+                        toast.success(
+                          `Suggested ${formatMoney(result.data.suggested_price)} · ${(result.data.confidence * 100).toFixed(0)}%`,
+                        );
+                        router.refresh();
+                      }
                     });
-                    if (!result.ok) toast.error(result.error.message);
-                    else {
-                      toast.success(
-                        `Suggested ${formatMoney(result.data.suggested_price)} · ${(result.data.confidence * 100).toFixed(0)}%`,
-                      );
-                      router.refresh();
-                    }
-                  });
-                }}
-                disabled={suggesting}
-                className="text-muted-foreground hover:text-foreground underline"
-              >
-                {suggesting ? "…" : aiSuggest != null ? "re-suggest" : "💡 suggest"}
-              </button>
-            )}
+                  }}
+                  disabled={suggesting}
+                  className="text-muted-foreground hover:text-foreground underline"
+                >
+                  {suggesting ? "…" : aiSuggest != null ? "re-suggest" : "suggest"}
+                </button>
+              )}
+            </div>
           </div>
         </TableCell>
         <TableCell className="text-right tabular-nums text-sm py-2">
