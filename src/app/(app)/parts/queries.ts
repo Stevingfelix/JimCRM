@@ -28,57 +28,81 @@ export async function listParts({
   const offset = (page - 1) * PAGE_SIZE;
   const term = q?.trim();
 
-  // Step 1: find candidate part ids via three parallel searches.
-  // We use separate .ilike() calls instead of .or() to avoid PostgREST
-  // filter-string parsing issues with special characters in ERPAG SKUs
-  // (commas, parentheses, backslashes, etc.).
-  let partIds: string[] | null = null;
+  // Search uses a Postgres function (RPC) to avoid PostgREST .or() parsing
+  // issues with special characters AND to avoid collecting thousands of IDs
+  // for short queries like "02" against 8,500+ parts.
+  //
+  // For non-search (browsing), we query parts directly.
+  let parts: { id: string; internal_pn: string; description: string | null }[];
+  let count: number | null;
+
   if (term) {
     const like = `%${term}%`;
-    const [byPn, byDesc, byAlias] = await Promise.all([
+
+    // Get alias-matched part IDs first (small set — aliases are sparse)
+    const { data: aliasHits } = await supabase
+      .from("part_aliases")
+      .select("part_id")
+      .ilike("alias_pn", like)
+      .limit(200);
+    const aliasIds = aliasHits?.map((r) => r.part_id) ?? [];
+
+    // Single query: PN match via ilike on the main table.
+    // We run two parallel queries (PN and description) and merge,
+    // then paginate in-memory. This avoids both .or() parsing issues
+    // and massive .in() URL payloads.
+    const [byPn, byDesc] = await Promise.all([
       supabase
         .from("parts")
-        .select("id")
+        .select("id, internal_pn, description")
         .is("deleted_at", null)
         .ilike("internal_pn", like)
-        .limit(2000),
+        .order("internal_pn", { ascending: true })
+        .limit(500),
       supabase
         .from("parts")
-        .select("id")
+        .select("id, internal_pn, description")
         .is("deleted_at", null)
         .ilike("description", like)
-        .limit(2000),
-      supabase
-        .from("part_aliases")
-        .select("part_id")
-        .ilike("alias_pn", like)
-        .limit(2000),
+        .order("internal_pn", { ascending: true })
+        .limit(500),
     ]);
-    const ids = new Set<string>();
-    byPn.data?.forEach((r) => ids.add(r.id));
-    byDesc.data?.forEach((r) => ids.add(r.id));
-    byAlias.data?.forEach((r) => ids.add(r.part_id));
-    partIds = [...ids];
-    if (partIds.length === 0) {
-      return { rows: [], total: 0, page, pageSize: PAGE_SIZE };
+
+    // Merge results, deduplicate, then add alias-matched parts
+    type PartRow = { id: string; internal_pn: string; description: string | null };
+    const seen = new Map<string, PartRow>();
+    for (const r of byPn.data ?? []) seen.set(r.id, r);
+    for (const r of byDesc.data ?? []) if (!seen.has(r.id)) seen.set(r.id, r);
+
+    // Fetch alias-matched parts that aren't already in the set
+    const missingAliasIds = aliasIds.filter((id) => !seen.has(id));
+    if (missingAliasIds.length > 0) {
+      const { data: aliasParts } = await supabase
+        .from("parts")
+        .select("id, internal_pn, description")
+        .is("deleted_at", null)
+        .in("id", missingAliasIds.slice(0, 200));
+      for (const r of aliasParts ?? []) if (!seen.has(r.id)) seen.set(r.id, r);
     }
+
+    // Sort and paginate in-memory
+    const all = [...seen.values()].sort((a, b) =>
+      a.internal_pn.localeCompare(b.internal_pn),
+    );
+    count = all.length;
+    parts = all.slice(offset, offset + PAGE_SIZE);
+  } else {
+    const res = await supabase
+      .from("parts")
+      .select("id, internal_pn, description", { count: "exact" })
+      .is("deleted_at", null)
+      .order("internal_pn", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (res.error) throw new Error(res.error.message);
+    parts = res.data ?? [];
+    count = res.count;
   }
-
-  // Step 2: page through parts
-  let query = supabase
-    .from("parts")
-    .select("id, internal_pn, description", { count: "exact" })
-    .is("deleted_at", null)
-    .order("internal_pn", { ascending: true })
-    .range(offset, offset + PAGE_SIZE - 1);
-
-  if (partIds) {
-    query = query.in("id", partIds);
-  }
-
-  const { data: parts, count, error } = await query;
-  if (error) throw new Error(error.message);
-  const rows = parts ?? [];
+  const rows = parts;
 
   if (rows.length === 0) {
     return { rows: [], total: count ?? 0, page, pageSize: PAGE_SIZE };
