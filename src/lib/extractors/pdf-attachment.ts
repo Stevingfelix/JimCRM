@@ -21,40 +21,9 @@ import {
   writeAttachmentCache,
 } from "./attachment-cache";
 
-// pdf-parse pulls in pdfjs-dist's legacy build which references browser
-// globals (DOMMatrix, Path2D, ImageData) at module load. Node serverless
-// functions don't have them and crash on import. We:
-//   1) Stub the globals before the first `import("pdf-parse")` call so the
-//      module can initialize without throwing.
-//   2) Lazy-import pdf-parse inside the function so the rest of the route
-//      (auth check, no-PDF emails) still works even if pdf-parse breaks.
-// The stubs are empty constructors — sufficient for module init; pdf-parse
-// only uses them transitively for raster rendering, which we don't do
-// (we only extract text).
-function installPdfjsShims() {
-  const g = globalThis as unknown as Record<string, unknown>;
-  if (typeof g.DOMMatrix === "undefined") {
-    g.DOMMatrix = class {};
-  }
-  if (typeof g.Path2D === "undefined") {
-    g.Path2D = class {};
-  }
-  if (typeof g.ImageData === "undefined") {
-    g.ImageData = class {};
-  }
-}
-
-async function pdfParse(data: Buffer): Promise<{ text: string }> {
-  installPdfjsShims();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mod: any = await import("pdf-parse");
-  const PDFParse = mod.PDFParse ?? mod.default?.PDFParse ?? mod.default;
-  const parser = new PDFParse({ data });
-  const result = await parser.getText();
-  return { text: result.text };
-}
-
-const MAX_PDF_CHARS = 30_000;
+// Anthropic API caps PDFs at 32MB per document block. Vendor quotes are
+// almost always < 5MB; this is a hard guard against pathological cases.
+const MAX_PDF_BYTES = 32 * 1024 * 1024;
 
 export async function extractPdfAttachment(input: {
   filename: string;
@@ -66,10 +35,7 @@ export async function extractPdfAttachment(input: {
   const cached = await readAttachmentCache(contentHash);
   if (cached) return cached;
 
-  const parsed = await pdfParse(input.buffer);
-  const text = parsed.text.slice(0, MAX_PDF_CHARS).trim();
-
-  if (text.length < 20) {
+  if (input.buffer.byteLength === 0) {
     const empty: ExtractionResult = {
       source_type: "other",
       customer_or_vendor_hint: null,
@@ -78,9 +44,15 @@ export async function extractPdfAttachment(input: {
     await writeAttachmentCache(contentHash, empty);
     return empty;
   }
+  if (input.buffer.byteLength > MAX_PDF_BYTES) {
+    throw new Error(
+      `PDF too large for native extraction: ${input.buffer.byteLength} bytes (max ${MAX_PDF_BYTES}). Filename: ${input.filename}`,
+    );
+  }
 
   const reference = await getPartNamingReference();
   const referenceText = renderReferenceForPrompt(reference);
+  const base64 = input.buffer.toString("base64");
 
   const client = getAnthropic();
   const response = await trackLlmCall(
@@ -109,7 +81,24 @@ export async function extractPdfAttachment(input: {
           messages: [
             {
               role: "user",
-              content: `Filename: ${input.filename}\n\n${text}`,
+              content: [
+                {
+                  type: "document",
+                  source: {
+                    type: "base64",
+                    media_type: "application/pdf",
+                    data: base64,
+                  },
+                  // Cache the PDF too — same vendor often sends quotes with
+                  // a shared template. Hash-keyed cache above handles exact
+                  // dupes; this handles near-dupes within a 5-min window.
+                  cache_control: { type: "ephemeral" },
+                },
+                {
+                  type: "text",
+                  text: `Filename: ${input.filename}`,
+                },
+              ],
             },
           ],
         }),

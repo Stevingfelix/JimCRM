@@ -21,7 +21,7 @@ import {
 } from "@/lib/extractors/enrich";
 import type { ExtractionResult } from "@/lib/extractors/_pattern";
 import { triageEmail, type TriageVerdict } from "@/lib/extractors/triage";
-import { isSenderBlocked, recordNoiseSender } from "@/lib/sender-blocklist";
+import { isSenderBlocked } from "@/lib/sender-blocklist";
 
 export type PollResult = {
   status: "ok" | "not_connected" | "label_not_found";

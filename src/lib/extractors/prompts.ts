@@ -2,7 +2,7 @@
 // attachment cache entry (see attachment-cache.ts) — bump whenever the
 // system text or extraction tool schema is changed in a way that should
 // produce different output.
-export const PROMPT_VERSION = "v4-2026-05-15-real-samples";
+export const PROMPT_VERSION = "v5-2026-05-15-native-pdf";
 
 // Common rules for all three extractors (email body, PDF, Excel). This
 // block is marked cache_control so it amortizes across every extractor
@@ -74,9 +74,9 @@ IGNORE the following — never emit lines from these:
 
 Set source_type="other" and return lines:[] when the email is a delivery confirmation, invoice ack, support reply, marketing/newsletter, OOO reply, or any non-quote business email.`;
 
-export const PDF_ADDENDUM = `Input type: PDF-extracted text. Usually a vendor quote (Lindstrom/Lindfast, Helical Wire, etc.) or a customer RFQ / PO.
+export const PDF_ADDENDUM = `Input type: PDF document attached directly (you can see layout, tables, and visuals — not text-extracted). Usually a vendor quote (Lindstrom/Lindfast, Helical Wire, etc.) or a customer RFQ / PO.
 
-PDF text may be misaligned, multi-column, or contain header/footer noise. Identify the line-item table by looking for a row containing PN/qty/price/desc-style headers — typical column names: "ITEM NO", "P/N", "Part Number", "CUST PART#", "Description", "Qty", "Quantity", "Cost/Per", "Net Unit Price", "Unit Price", "EXT AMT", "Total".
+Use the visual structure of the document. Identify the line-item table by its column headers — typical names: "ITEM NO", "P/N", "Part Number", "CUST PART#", "Description", "Qty", "Quantity", "Cost/Per", "Net Unit Price", "Unit Price", "EXT AMT", "Total". Read one line per data row beneath those headers.
 
 Real vendor quote format examples seen in CAP's inbox:
 - Lindstrom: rows have "ITEM NO. / DESCRIPTION", "CUST PART #", "WH", "QUOTE DATE", "QUANTITY", "COST/PER", "WEIGHT", "EXT AMT". One line per item. "COST/PER" with a trailing "C" means cost per 100 — record the unit price as cost/100 in unit_price (so "61.19 C" → unit_price=0.6119).

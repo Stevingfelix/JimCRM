@@ -41,6 +41,7 @@ type Mode = "customer" | "vendor";
 
 type LineDraft = {
   raw_text: string;
+  part_number_guess: string | null;
   part_id: string | null;
   part_display: string;
   description: string | null;
@@ -85,6 +86,7 @@ export function ReviewEditor({
   const [lines, setLines] = useState<LineDraft[]>(() =>
     initialLines.map((l) => ({
       raw_text: l.raw_text,
+      part_number_guess: l.part_number_guess ?? null,
       part_id: l.matched_part?.id ?? null,
       part_display: l.matched_part?.internal_pn ?? l.part_number_guess ?? "",
       description: l.matched_part?.description ?? null,
@@ -166,6 +168,9 @@ export function ReviewEditor({
             part_id: l.part_id!,
             qty: Number(l.qty),
             unit_price: l.unit_price === "" ? null : Number(l.unit_price),
+            raw_text: l.raw_text,
+            part_number_guess: l.part_number_guess,
+            reasoning: l.reasoning,
           })),
         });
         if (!result.ok) {
@@ -199,6 +204,9 @@ export function ReviewEditor({
             unit_price: Number(l.unit_price),
             lead_time_days:
               l.lead_time_days === "" ? null : Number(l.lead_time_days),
+            raw_text: l.raw_text,
+            part_number_guess: l.part_number_guess,
+            reasoning: l.reasoning,
           })),
         });
         if (!result.ok) {

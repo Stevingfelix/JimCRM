@@ -11,11 +11,19 @@ import {
   recordNoiseSender,
   recordNoiseSendersBulk,
 } from "@/lib/sender-blocklist";
+import { recordAliasSuggestion } from "@/lib/alias-suggestions";
 
 const AcceptedLineSchema = z.object({
   part_id: z.string().uuid(),
   qty: z.coerce.number().min(0),
   unit_price: z.coerce.number().min(0).nullable(),
+  // Optional context for alias-suggestion capture. Not used for the
+  // commit itself — purely so we can ask "did the human pick a part
+  // that the AI's PN guess didn't already match?" and store the
+  // pairing for later review.
+  raw_text: z.string().optional().nullable(),
+  part_number_guess: z.string().optional().nullable(),
+  reasoning: z.string().optional().nullable(),
 });
 
 const CommitToQuoteSchema = z.object({
@@ -79,11 +87,75 @@ export async function commitReviewToQuote(
       })
       .eq("id", parsed.data.event_id);
 
+    // Capture alias suggestions for any line where the AI's PN guess
+    // didn't match the part the human picked. Best-effort — never fail
+    // the commit on this.
+    try {
+      await captureAliasSuggestions(
+        parsed.data.lines.map((l) => ({
+          part_id: l.part_id,
+          raw_text: l.raw_text ?? null,
+          part_number_guess: l.part_number_guess ?? null,
+          reasoning: l.reasoning ?? null,
+        })),
+        parsed.data.event_id,
+        "customer",
+        userId,
+      );
+    } catch {
+      // swallow
+    }
+
     revalidatePath("/review");
     revalidatePath(`/quotes/${quote.id}`);
     return ok({ quote_id: quote.id });
   } catch (e) {
     return fromException(e);
+  }
+}
+
+// Walks committed lines and writes alias suggestions when the AI's PN
+// guess for a line doesn't match the picked part's internal_pn or any
+// existing alias. Used by both customer-quote and vendor-quote commits.
+async function captureAliasSuggestions(
+  lines: Array<{
+    part_id: string;
+    raw_text: string | null;
+    part_number_guess: string | null;
+    reasoning: string | null;
+  }>,
+  eventId: string,
+  sourceType: "customer" | "vendor",
+  userId: string | null,
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  // Pull internal_pn for every picked part in one query.
+  const partIds = Array.from(new Set(lines.map((l) => l.part_id)));
+  const { data: parts } = await supabase
+    .from("parts")
+    .select("id, internal_pn")
+    .in("id", partIds);
+  const pnById = new Map<string, string>(
+    (parts ?? []).map((p) => [p.id, p.internal_pn]),
+  );
+
+  for (const line of lines) {
+    const guess = (line.part_number_guess ?? "").trim();
+    if (!guess) continue;
+    const pickedPn = pnById.get(line.part_id);
+    if (pickedPn && pickedPn.toLowerCase() === guess.toLowerCase()) continue;
+
+    await recordAliasSuggestion({
+      partId: line.part_id,
+      aliasPn: guess,
+      rawText: line.raw_text,
+      reasoning: line.reasoning,
+      sourceEventId: eventId,
+      sourceType,
+      sourceName: null,
+      userId,
+    });
   }
 }
 
@@ -100,6 +172,9 @@ const AcceptedVendorLineSchema = z.object({
   qty: z.coerce.number().min(0).nullable(),
   unit_price: z.coerce.number().min(0),
   lead_time_days: z.coerce.number().int().min(0).nullable(),
+  raw_text: z.string().optional().nullable(),
+  part_number_guess: z.string().optional().nullable(),
+  reasoning: z.string().optional().nullable(),
 });
 
 const CommitToVendorQuotesSchema = z.object({
@@ -147,6 +222,22 @@ export async function commitReviewToVendorQuotes(
         updated_by: userId,
       })
       .eq("id", parsed.data.event_id);
+
+    try {
+      await captureAliasSuggestions(
+        parsed.data.lines.map((l) => ({
+          part_id: l.part_id,
+          raw_text: l.raw_text ?? null,
+          part_number_guess: l.part_number_guess ?? null,
+          reasoning: l.reasoning ?? null,
+        })),
+        parsed.data.event_id,
+        "vendor",
+        userId,
+      );
+    } catch {
+      // swallow
+    }
 
     revalidatePath("/review");
     revalidatePath(`/vendors/${parsed.data.vendor_id}`);

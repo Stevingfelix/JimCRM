@@ -6,6 +6,10 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserId } from "@/lib/auth";
 import { type ActionResult, err, fromException, ok } from "@/lib/result";
+import {
+  acceptSuggestion,
+  dismissSuggestion,
+} from "@/lib/alias-suggestions";
 
 const ALIAS_SOURCES = ["customer", "manufacturer", "vendor", "other"] as const;
 
@@ -202,6 +206,41 @@ export async function deletePartAttachment({
       .eq("id", id);
     if (error) return err(error.code ?? "db_error", error.message);
     revalidatePath(`/parts/${part_id}`);
+    return ok(undefined);
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
+const SuggestionIdSchema = z.object({
+  id: z.string().uuid(),
+  part_id: z.string().uuid(),
+});
+
+export async function acceptAliasSuggestion(
+  input: z.input<typeof SuggestionIdSchema>,
+): Promise<ActionResult<void>> {
+  const parsed = SuggestionIdSchema.safeParse(input);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+  try {
+    const userId = await getCurrentUserId();
+    await acceptSuggestion(parsed.data.id, userId);
+    revalidatePath(`/parts/${parsed.data.part_id}`);
+    return ok(undefined);
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
+export async function dismissAliasSuggestion(
+  input: z.input<typeof SuggestionIdSchema>,
+): Promise<ActionResult<void>> {
+  const parsed = SuggestionIdSchema.safeParse(input);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+  try {
+    const userId = await getCurrentUserId();
+    await dismissSuggestion(parsed.data.id, userId);
+    revalidatePath(`/parts/${parsed.data.part_id}`);
     return ok(undefined);
   } catch (e) {
     return fromException(e);

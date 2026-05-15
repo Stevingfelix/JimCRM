@@ -9,9 +9,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { listPendingSuggestionsForPart } from "@/lib/alias-suggestions";
 import { getPartDetail } from "../queries";
 import { PartForm } from "./components/part-form";
 import { AliasesEditor } from "./components/aliases-editor";
+import { AliasSuggestionsCard } from "./components/alias-suggestions-card";
 import { PartAttachmentsSection } from "./components/part-attachments-section";
 
 function formatDate(iso: string): string {
@@ -28,7 +30,10 @@ export default async function PartDetailPage({
 }: {
   params: { id: string };
 }) {
-  const detail = await getPartDetail(params.id);
+  const [detail, suggestions] = await Promise.all([
+    getPartDetail(params.id),
+    listPendingSuggestionsForPart(params.id),
+  ]);
   if (!detail) notFound();
 
   return (
@@ -53,6 +58,10 @@ export default async function PartDetailPage({
           Alternate part numbers used by customers, manufacturers, or vendors.
           Searched when matching inbound quote requests.
         </p>
+        <AliasSuggestionsCard
+          partId={detail.part.id}
+          suggestions={suggestions}
+        />
         <AliasesEditor partId={detail.part.id} initial={detail.aliases} />
       </section>
 
