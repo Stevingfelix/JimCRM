@@ -35,7 +35,8 @@ export type LlmCallType =
   | "email_body"
   | "pdf_attachment"
   | "excel_attachment"
-  | "price_suggest";
+  | "price_suggest"
+  | "triage";
 
 export type Usage = {
   input_tokens?: number | null;

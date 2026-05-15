@@ -20,6 +20,8 @@ import {
   type EnrichedLine,
 } from "@/lib/extractors/enrich";
 import type { ExtractionResult } from "@/lib/extractors/_pattern";
+import { triageEmail, type TriageVerdict } from "@/lib/extractors/triage";
+import { isSenderBlocked, recordNoiseSender } from "@/lib/sender-blocklist";
 
 export type PollResult = {
   status: "ok" | "not_connected" | "label_not_found";
@@ -111,6 +113,13 @@ export async function processMessage(
 ): Promise<void> {
   const supabase = createAdminClient();
 
+  const attachmentMeta = msg.attachments.map((a) => ({
+    filename: a.filename,
+    mime_type: a.mime_type,
+    size: a.size,
+    kind: attachmentKind({ filename: a.filename, mimeType: a.mime_type }),
+  }));
+
   const { data: inserted, error: insertErr } = await supabase
     .from("email_events")
     .insert({
@@ -123,12 +132,7 @@ export async function processMessage(
         sender: { email: msg.from_email, name: msg.from_name },
         subject: msg.subject,
         body_preview: msg.body_text.slice(0, 500),
-        attachments_meta: msg.attachments.map((a) => ({
-          filename: a.filename,
-          mime_type: a.mime_type,
-          size: a.size,
-          kind: attachmentKind({ filename: a.filename, mimeType: a.mime_type }),
-        })),
+        attachments_meta: attachmentMeta,
       },
     })
     .select("id")
@@ -138,6 +142,70 @@ export async function processMessage(
     throw new Error(insertErr.message);
   }
   const eventId = inserted.id;
+
+  // Gate 1: sender blocklist (zero LLM cost). If this sender was previously
+  // rejected by a human, skip extraction outright.
+  if (msg.from_email) {
+    const blocked = await isSenderBlocked(msg.from_email);
+    if (blocked) {
+      await supabase
+        .from("email_events")
+        .update({
+          parse_status: "skipped",
+          needs_review: false,
+          parsed_payload: {
+            sender: { email: msg.from_email, name: msg.from_name },
+            subject: msg.subject,
+            body_preview: msg.body_text.slice(0, 500),
+            attachments_meta: attachmentMeta,
+            skip_reason: "sender_blocklisted",
+            blocklist_count: blocked.rejected_count,
+          },
+        })
+        .eq("id", eventId);
+      return;
+    }
+  }
+
+  // Gate 2: Haiku triage. Cheap classifier decides if this is worth a Sonnet
+  // call at all. Skips marketing / transactional / OOO / non-quote business
+  // mail before it hits the expensive extractor.
+  let triage: TriageVerdict | null = null;
+  try {
+    triage = await triageEmail({
+      subject: msg.subject,
+      from_email: msg.from_email,
+      from_name: msg.from_name,
+      body_preview: msg.body_text.slice(0, 800),
+      attachment_meta: attachmentMeta.map((a) => ({
+        filename: a.filename,
+        mime_type: a.mime_type,
+        kind: a.kind ?? null,
+      })),
+    });
+  } catch {
+    // Fail open — if triage breaks, fall through to extraction.
+    triage = null;
+  }
+
+  if (triage && triage.verdict === "skip") {
+    await supabase
+      .from("email_events")
+      .update({
+        parse_status: "skipped",
+        needs_review: false,
+        parsed_payload: {
+          sender: { email: msg.from_email, name: msg.from_name },
+          subject: msg.subject,
+          body_preview: msg.body_text.slice(0, 500),
+          attachments_meta: attachmentMeta,
+          triage,
+          skip_reason: `triage:${triage.category}`,
+        },
+      })
+      .eq("id", eventId);
+    return;
+  }
 
   // Run email-body extractor (cheap pre-filter for trivially short bodies).
   let bodyExtraction: ExtractionResult | null = null;
@@ -212,6 +280,7 @@ export async function processMessage(
           body_preview: msg.body_text.slice(0, 1000),
           body_error: bodyError,
           attachments: attachmentExtractions,
+          triage,
         },
       })
       .eq("id", eventId);
@@ -229,6 +298,7 @@ export async function processMessage(
           sender: { email: msg.from_email, name: msg.from_name },
           subject: msg.subject,
           reason: "body_too_short_and_no_attachments",
+          triage,
         },
       })
       .eq("id", eventId);
@@ -297,6 +367,7 @@ export async function processMessage(
         attachments: attachmentExtractions,
         enriched,
         matched_customer: matchedCustomer,
+        triage,
       },
     })
     .eq("id", eventId);

@@ -2,7 +2,7 @@
 // attachment cache entry (see attachment-cache.ts) — bump whenever the
 // system text or extraction tool schema is changed in a way that should
 // produce different output.
-export const PROMPT_VERSION = "v3-2026-05-14-milspec";
+export const PROMPT_VERSION = "v4-2026-05-15-real-samples";
 
 // Common rules for all three extractors (email body, PDF, Excel). This
 // block is marked cache_control so it amortizes across every extractor
@@ -49,22 +49,50 @@ Never invent codes that aren't listed. Never guess a length/thread/grade not sta
 
 export const EMAIL_ADDENDUM = `Input type: email body (prose, possibly with quote thread / signature).
 
-Examples of customer quote-request lines:
-- "Need pricing on 500 of CAP-2210 and 1000 of nylon insert nuts M6."
-- "Quote me 250 of 91251A537 please."
+REAL examples of customer quote-request lines (from CAP's actual inbox):
+- Subject "NAS662C2-R2 RFQ 10Kpcs" + body "Please quote 10K pcs of NAS662C2-R2. .033/ea stk"
+  → one line, part_number_guess="NAS662C2-R2", qty=10000, unit_price=null (the .033 is a target, not a confirmed price), confidence high.
 - "100 each of: 1/4-20 x 1 SHCS, 5/16-18 x 1 SHCS, 3/8-16 x 1 SHCS"
+  → three separate lines, each plain-English (attempt cap_pn composition).
+- "Need pricing on 500 of CAP-2210 and 1000 of nylon insert nuts M6."
+  → two lines: one external PN ("CAP-2210"), one plain-English ("nylon insert nuts M6").
 
-Examples of vendor-reply lines:
-- "CAP-2210: $0.11 ea at 1000, 3 days lead."
-- "Pricing attached: P/N 91251A537 — $0.13 ea, 5d."
+REAL examples of vendor-reply lines (from CAP's actual inbox):
+- "MS171494   320 pcs @ $.16 each   $50 min PO-Mfg C of C"
+  → one line, part_number_guess="MS171494", qty=320, unit_price=0.16. Trailing terms ("$50 min PO", "Mfg C of C") are vendor terms — not line items.
+- "P/N 91251A537 — $0.13 ea, 5d" or "CAP-2210: $0.11 ea at 1000, 3 days lead"
+  → single-line vendor pricing. Lead time / terms go in reasoning, NOT as separate lines.
+- Multi-line vendor quote tables (Lindstrom / Lindfast / Helical Wire style) usually arrive as PDF/Excel attachments — when they appear inline as text, look for a header row (Item / PN / Qty / Price / etc.) and emit one line per data row.
 
-Ignore quoted reply threads, signatures, disclaimers, and unsubscribe footers unless they contain the only line items.`;
+IGNORE the following — never emit lines from these:
+- Acceptance / T&C boilerplate ("Buyer is hereby notified...", "Quotes valid 30 days...", "stock items ship in 24-48 hours")
+- Vendor signatures and contact blocks (name, title, phone, fax, address, "View My Digital Business Card")
+- Quoted reply threads ("On May 8 Jim wrote...", "> Please quote..." nested replies)
+- Marketing footers ("Ask about our new product lines!", "View our catalog")
+- Unsubscribe / disclaimer / forwarded-via footers
+- Minimum-order language ("$50 min PO", "100.00 P.O. min", "25.00 line min") — record as reasoning context only, not as lines
 
-export const PDF_ADDENDUM = `Input type: PDF-extracted text. Usually a vendor quote, customer RFQ, or purchase order.
+Set source_type="other" and return lines:[] when the email is a delivery confirmation, invoice ack, support reply, marketing/newsletter, OOO reply, or any non-quote business email.`;
 
-PDF text may be misaligned, multi-column, or contain header/footer noise. Identify the line-item table by looking for a row containing PN/qty/price/desc-style headers, then read each data row beneath it.
+export const PDF_ADDENDUM = `Input type: PDF-extracted text. Usually a vendor quote (Lindstrom/Lindfast, Helical Wire, etc.) or a customer RFQ / PO.
 
-Skip rows that are obviously not line items (totals, subtotals, "Page 1 of N", boilerplate). If a row clearly belongs to a different table or section, ignore it.`;
+PDF text may be misaligned, multi-column, or contain header/footer noise. Identify the line-item table by looking for a row containing PN/qty/price/desc-style headers — typical column names: "ITEM NO", "P/N", "Part Number", "CUST PART#", "Description", "Qty", "Quantity", "Cost/Per", "Net Unit Price", "Unit Price", "EXT AMT", "Total".
+
+Real vendor quote format examples seen in CAP's inbox:
+- Lindstrom: rows have "ITEM NO. / DESCRIPTION", "CUST PART #", "WH", "QUOTE DATE", "QUANTITY", "COST/PER", "WEIGHT", "EXT AMT". One line per item. "COST/PER" with a trailing "C" means cost per 100 — record the unit price as cost/100 in unit_price (so "61.19 C" → unit_price=0.6119).
+- Helical Wire: rows have "Item", "Description", "Qty", "Net Unit Price", "Total". The "Item" column has the vendor PN; "Description" has both the customer's PN ("P/N 1428L0375L LOT") and the spec text.
+
+Then read each data row beneath the header. Emit one line per data row.
+
+Skip rows that are obviously not line items:
+- Totals / Subtotals / Sales tax / Freight / Misc / Total Quoted
+- "Page 1 of N", page break markers
+- Boilerplate ("THANK YOU FOR YOUR INQUIRY!!", "Ask about our new product lines!")
+- Terms blocks ("FOB Point", "Currency: US Dollars", "Prices quoted are valid for 10 days", "Quotes Valid 30 days")
+- Warehouse code legends (e.g. "00 = MINNESOTA WHSE 01 = SOUTH CAROLINA WHSE")
+- CAGE codes, certifications ("AS9100", "AMERICAN MADE"), addresses
+
+If a row clearly belongs to a different table or section (e.g. a summary footer), ignore it.`;
 
 export const EXCEL_ADDENDUM = `Input type: Excel-derived CSV text. Multiple sheets may be concatenated and prefixed with "### Sheet: <name>".
 

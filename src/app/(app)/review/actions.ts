@@ -7,6 +7,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUserId } from "@/lib/auth";
 import { type ActionResult, err, fromException, ok } from "@/lib/result";
 import { pollGmail } from "@/lib/gmail/poll";
+import {
+  recordNoiseSender,
+  recordNoiseSendersBulk,
+} from "@/lib/sender-blocklist";
 
 const AcceptedLineSchema = z.object({
   part_id: z.string().uuid(),
@@ -164,6 +168,16 @@ export async function rejectReview(
   try {
     const supabase = createAdminClient();
     const userId = await getCurrentUserId();
+
+    // Read sender_email from the existing parsed_payload BEFORE we mark
+    // the row rejected so we can record it on the blocklist.
+    const { data: existing } = await supabase
+      .from("email_events")
+      .select("parsed_payload")
+      .eq("id", eventId)
+      .maybeSingle();
+    const sender = extractSenderEmail(existing?.parsed_payload);
+
     const { error } = await supabase
       .from("email_events")
       .update({
@@ -173,11 +187,26 @@ export async function rejectReview(
       })
       .eq("id", eventId);
     if (error) return err(error.code ?? "db_error", error.message);
+
+    if (sender) {
+      try {
+        await recordNoiseSender(sender, userId);
+      } catch {
+        // Don't fail the reject if the blocklist write hiccups.
+      }
+    }
+
     revalidatePath("/review");
     return ok(undefined);
   } catch (e) {
     return fromException(e);
   }
+}
+
+function extractSenderEmail(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const p = payload as { sender?: { email?: string | null } };
+  return p.sender?.email ?? null;
 }
 
 const BulkRejectSchema = z
@@ -193,6 +222,17 @@ export async function rejectReviewBulk(
   try {
     const supabase = createAdminClient();
     const userId = await getCurrentUserId();
+
+    // Read sender_email for each id BEFORE the update so we can blocklist
+    // them in one batch after the reject lands.
+    const { data: existingRows } = await supabase
+      .from("email_events")
+      .select("parsed_payload")
+      .in("id", parsed.data);
+    const senders = (existingRows ?? []).map((r) =>
+      extractSenderEmail(r.parsed_payload),
+    );
+
     const { data, error } = await supabase
       .from("email_events")
       .update({
@@ -203,6 +243,13 @@ export async function rejectReviewBulk(
       .in("id", parsed.data)
       .select("id");
     if (error) return err(error.code ?? "db_error", error.message);
+
+    try {
+      await recordNoiseSendersBulk(senders, userId);
+    } catch {
+      // best-effort; don't fail the reject
+    }
+
     revalidatePath("/review");
     return ok({ count: data?.length ?? 0 });
   } catch (e) {
