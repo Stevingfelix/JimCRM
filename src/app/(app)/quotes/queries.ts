@@ -222,6 +222,7 @@ export type QuoteDetail = {
     customer_name: string;
     customer_billing_address: string | null;
     customer_primary_contact: QuoteCustomerContact | null;
+    customer_contacts: QuoteCustomerContact[];
     status: QuoteStatus;
     validity_date: string | null;
     customer_notes: string | null;
@@ -272,6 +273,7 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
 
   // contacts is stored as JSON (array of {name, email, phone, is_primary?})
   let primaryContact: QuoteCustomerContact | null = null;
+  let allContacts: QuoteCustomerContact[] = [];
   if (Array.isArray(q.customers.contacts) && q.customers.contacts.length > 0) {
     type ContactRow = {
       name?: string | null;
@@ -280,6 +282,11 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
       is_primary?: boolean;
     };
     const contacts = q.customers.contacts as ContactRow[];
+    allContacts = contacts.map((c) => ({
+      name: c.name ?? null,
+      email: c.email ?? null,
+      phone: c.phone ?? null,
+    }));
     const primary = contacts.find((c) => c?.is_primary) ?? contacts[0];
     if (primary) {
       primaryContact = {
@@ -410,6 +417,7 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
       customer_name: q.customers.name,
       customer_billing_address: q.customers.billing_address,
       customer_primary_contact: primaryContact,
+      customer_contacts: allContacts,
       status: q.status,
       validity_date: q.validity_date,
       customer_notes: q.customer_notes,

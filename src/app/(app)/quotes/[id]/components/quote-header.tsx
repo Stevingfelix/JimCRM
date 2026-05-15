@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatQuoteNumber } from "@/lib/format";
 import {
@@ -33,6 +34,7 @@ import {
   type Outcome,
 } from "./outcome-reason-dialog";
 import { RfqDialog } from "./rfq-dialog";
+import { EmailQuoteDialog } from "./email-quote-dialog";
 
 const STATUSES = ["draft", "sent", "won", "lost", "expired"] as const;
 type Status = (typeof STATUSES)[number];
@@ -67,9 +69,10 @@ type Props = {
     part_description: string | null;
     qty: number;
   }>;
+  customerContacts: Array<{ name: string | null; email: string | null }>;
 };
 
-export function QuoteHeader({ quote, templates, lines }: Props) {
+export function QuoteHeader({ quote, templates, lines, customerContacts }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState<Status>(quote.status);
   const [validity, setValidity] = useState(quote.validity_date ?? "");
@@ -77,6 +80,7 @@ export function QuoteHeader({ quote, templates, lines }: Props) {
   const [pending, startTransition] = useTransition();
   const [statusPending, startStatus] = useTransition();
   const [pendingOutcome, setPendingOutcome] = useState<Outcome | null>(null);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   const dirty =
     validity !== (quote.validity_date ?? "") ||
@@ -226,6 +230,15 @@ export function QuoteHeader({ quote, templates, lines }: Props) {
           <Button
             size="sm"
             variant="outline"
+            onClick={() => setEmailOpen(true)}
+            className="gap-1.5"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            Email
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
             onClick={onShare}
             disabled={!quote.public_token}
             title={
@@ -307,6 +320,15 @@ export function QuoteHeader({ quote, templates, lines }: Props) {
         onConfirm={(reason) =>
           pendingOutcome && applyStatus(pendingOutcome, reason)
         }
+      />
+
+      <EmailQuoteDialog
+        open={emailOpen}
+        onOpenChange={setEmailOpen}
+        quoteId={quote.id}
+        quoteNumber={quote.quote_number}
+        customerContacts={customerContacts}
+        defaultValidity={quote.validity_date}
       />
     </div>
   );

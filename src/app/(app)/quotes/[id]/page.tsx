@@ -8,6 +8,7 @@ import { LinesEditor } from "./components/lines-editor";
 import { NotesSection } from "./components/notes-section";
 import { AttachmentsSection } from "./components/attachments-section";
 import { ActivityLog } from "./components/activity-log";
+import { PdfPreview } from "./components/pdf-preview";
 
 export default async function QuoteDetailPage({
   params,
@@ -31,6 +32,7 @@ export default async function QuoteDetailPage({
           part_description: l.part_description,
           qty: l.qty,
         }))}
+        customerContacts={detail.quote.customer_contacts}
       />
 
       <QuoteSummaryCard
@@ -38,6 +40,8 @@ export default async function QuoteDetailPage({
         lines={detail.lines}
         company={company}
       />
+
+      <PdfPreview quoteId={detail.quote.id} />
 
       <Separator />
 

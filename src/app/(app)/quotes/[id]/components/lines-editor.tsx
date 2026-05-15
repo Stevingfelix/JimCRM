@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,14 +36,123 @@ type Props = {
   initialLines: QuoteLineDetail[];
 };
 
+async function runWithConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  limit: number,
+  onProgress: (done: number) => void,
+): Promise<T[]> {
+  const results: T[] = [];
+  let idx = 0;
+  let done = 0;
+  async function next(): Promise<void> {
+    const i = idx++;
+    if (i >= tasks.length) return;
+    results[i] = await tasks[i]();
+    done++;
+    onProgress(done);
+    await next();
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(limit, tasks.length) }, () => next()),
+  );
+  return results;
+}
+
 export function LinesEditor({ quoteId, initialLines }: Props) {
+  const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [bulkProgress, setBulkProgress] = useState<{
+    total: number;
+    done: number;
+  } | null>(null);
+
   const subtotal = initialLines.reduce<number | null>((acc, l) => {
     if (l.unit_price == null) return acc;
     return (acc ?? 0) + l.qty * l.unit_price;
   }, null);
 
+  const suggestableCount = initialLines.filter(
+    (l) => l.part_id && l.ai_suggested_price == null,
+  ).length;
+
+  const handleBulkSuggest = useCallback(async () => {
+    const targets = initialLines.filter(
+      (l) => l.part_id && l.ai_suggested_price == null,
+    );
+    if (targets.length === 0) {
+      toast("All lines already have suggestions");
+      return;
+    }
+    setBulkProgress({ total: targets.length, done: 0 });
+    const tasks = targets.map(
+      (l) => () =>
+        suggestPriceForLine({ line_id: l.id, quote_id: quoteId }),
+    );
+    let errors = 0;
+    await runWithConcurrency(
+      tasks,
+      3,
+      (done) => setBulkProgress({ total: targets.length, done }),
+    ).then((results) => {
+      errors = results.filter((r) => !r.ok).length;
+    });
+    setBulkProgress(null);
+    router.refresh();
+    if (errors > 0) toast.error(`${errors} suggestions failed`);
+    else toast.success(`${targets.length} prices suggested`);
+  }, [initialLines, quoteId, router]);
+
+  // Keyboard shortcuts: Ctrl+Shift+S = bulk suggest, Ctrl+N = new line
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.shiftKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        handleBulkSuggest();
+      } else if (mod && !e.shiftKey && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        const row = containerRef.current?.querySelector("[data-new-line]");
+        const input = row?.querySelector("input");
+        input?.focus();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [handleBulkSuggest]);
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" ref={containerRef}>
+      {/* Bulk suggest bar */}
+      <div className="flex items-center justify-end gap-3 px-1">
+        {bulkProgress ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="w-32 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all rounded-full"
+                style={{
+                  width: `${(bulkProgress.done / bulkProgress.total) * 100}%`,
+                }}
+              />
+            </div>
+            Suggesting {bulkProgress.done}/{bulkProgress.total}…
+          </div>
+        ) : (
+          suggestableCount > 0 && (
+            <button
+              type="button"
+              onClick={handleBulkSuggest}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Sparkles className="size-3.5" />
+              Suggest all prices ({suggestableCount})
+              <kbd className="hidden sm:inline-block ml-1 text-[10px] border rounded px-1 py-0.5 text-muted-foreground/60">
+                Ctrl+Shift+S
+              </kbd>
+            </button>
+          )
+        )}
+      </div>
+
       <div className="rounded-md border overflow-visible">
         <Table>
           <TableHeader>
@@ -65,13 +175,18 @@ export function LinesEditor({ quoteId, initialLines }: Props) {
         </Table>
       </div>
 
-      <div className="flex justify-end items-baseline gap-4 px-4 pt-2 text-sm">
-        <span className="text-muted-foreground uppercase text-xs tracking-wide">
-          Subtotal
+      <div className="flex justify-between items-baseline px-4 pt-2 text-sm">
+        <span className="text-[10px] text-muted-foreground/60">
+          Ctrl+N new line
         </span>
-        <span className="text-base font-semibold tabular-nums">
-          {formatMoney(subtotal)}
-        </span>
+        <div className="flex items-baseline gap-4">
+          <span className="text-muted-foreground uppercase text-xs tracking-wide">
+            Subtotal
+          </span>
+          <span className="text-base font-semibold tabular-nums">
+            {formatMoney(subtotal)}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -473,7 +588,7 @@ function NewLineRow({ quoteId }: { quoteId: string }) {
   };
 
   return (
-    <TableRow className="bg-muted/20">
+    <TableRow className="bg-muted/20" data-new-line>
       <TableCell className={cn("text-muted-foreground", pending && "opacity-50")}>
         +
       </TableCell>

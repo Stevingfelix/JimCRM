@@ -61,6 +61,55 @@ export async function getVendorRecsAction(
   }));
 }
 
+export type DraftQuoteResult = {
+  id: string;
+  quote_number: number;
+  customer_name: string;
+  line_count: number;
+};
+
+export async function searchDraftQuotesAction(
+  q: string,
+): Promise<DraftQuoteResult[]> {
+  const supabase = createClient();
+  const term = q.trim();
+
+  let query = supabase
+    .from("quotes")
+    .select("id, quote_number, customers!inner(name), quote_lines(id)")
+    .eq("status", "draft")
+    .is("deleted_at", null)
+    .order("quote_number", { ascending: false })
+    .limit(10);
+
+  if (term) {
+    // Filter by quote_number (numeric match) or customer name (ilike).
+    const asNum = Number(term);
+    if (!Number.isNaN(asNum) && Number.isInteger(asNum)) {
+      query = query.or(`quote_number.eq.${asNum},customers.name.ilike.%${term}%`);
+    } else {
+      query = query.ilike("customers.name", `%${term}%`);
+    }
+  }
+
+  const { data } = await query;
+  if (!data) return [];
+
+  type Row = {
+    id: string;
+    quote_number: number;
+    customers: { name: string };
+    quote_lines: { id: string }[];
+  };
+
+  return (data as unknown as Row[]).map((r) => ({
+    id: r.id,
+    quote_number: r.quote_number,
+    customer_name: r.customers.name,
+    line_count: r.quote_lines?.length ?? 0,
+  }));
+}
+
 export async function searchCustomersAction(q: string) {
   const supabase = createClient();
   const term = q.trim();

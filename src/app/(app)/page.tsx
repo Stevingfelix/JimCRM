@@ -96,6 +96,84 @@ export default async function DashboardPage() {
         </div>
       </section>
 
+      {/* NEEDS ATTENTION */}
+      {(data.attention.expiring_soon.length > 0 ||
+        data.attention.stale_sent.length > 0) && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold tracking-tight">
+            Needs attention
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {data.attention.expiring_soon.length > 0 && (
+              <div className="rounded-xl border bg-card overflow-hidden">
+                <div className="px-4 py-2.5 border-b text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20">
+                  Expiring within 7 days
+                </div>
+                <ul className="divide-y">
+                  {data.attention.expiring_soon.map((q) => (
+                    <li key={q.id}>
+                      <Link
+                        href={`/quotes/${q.id}`}
+                        className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium tabular-nums">
+                            {formatQuoteNumber(q.quote_number)}
+                          </span>
+                          <span className="text-sm text-muted-foreground ml-2 truncate">
+                            {q.customer_name}
+                          </span>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-sm tabular-nums font-medium">
+                            {q.total != null ? formatMoney(q.total) : "—"}
+                          </div>
+                          <div className="text-[10px] text-amber-600 tabular-nums">
+                            expires {formatDate(q.validity_date)}
+                          </div>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {data.attention.stale_sent.length > 0 && (
+              <div className="rounded-xl border bg-card overflow-hidden">
+                <div className="px-4 py-2.5 border-b text-xs font-medium text-rose-700 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/20">
+                  Awaiting response 3+ days
+                </div>
+                <ul className="divide-y">
+                  {data.attention.stale_sent.map((q) => (
+                    <li key={q.id}>
+                      <Link
+                        href={`/quotes/${q.id}`}
+                        className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium tabular-nums">
+                            {formatQuoteNumber(q.quote_number)}
+                          </span>
+                          <span className="text-sm text-muted-foreground ml-2 truncate">
+                            {q.customer_name}
+                          </span>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className="border-rose-200 text-rose-600 tabular-nums shrink-0"
+                        >
+                          {q.days_ago}d ago
+                        </Badge>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* REORDER REMINDERS */}
       {reorderHints.length > 0 && (
         <section className="space-y-3">

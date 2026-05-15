@@ -15,6 +15,7 @@ import { PartForm } from "./components/part-form";
 import { AliasesEditor } from "./components/aliases-editor";
 import { AliasSuggestionsCard } from "./components/alias-suggestions-card";
 import { PartAttachmentsSection } from "./components/part-attachments-section";
+import { PriceHistoryChart } from "./components/price-history-chart";
 
 function formatDate(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
@@ -128,6 +129,26 @@ export default async function PartDetailPage({
             </TableBody>
           </Table>
         </div>
+      </section>
+
+      <Separator />
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold tracking-tight">Price trend</h2>
+        <PriceHistoryChart
+          sellPrices={detail.history
+            .filter((h) => h.unit_price !== null)
+            .map((h) => ({
+              date: h.created_at,
+              price: h.unit_price as number,
+              customer: h.customer_name,
+            }))}
+          costPrices={detail.vendor_price_history.map((v) => ({
+            date: v.date,
+            price: v.unit_price,
+            vendor: v.vendor_name,
+          }))}
+        />
       </section>
 
       <Separator />

@@ -27,9 +27,13 @@ import { PartSearchCell } from "@/app/(app)/quotes/[id]/components/part-search-c
 import {
   searchCustomersAction,
   searchVendorsAction,
+  searchDraftQuotesAction,
 } from "@/app/(app)/quotes/lookups";
+import type { DraftQuoteResult } from "@/app/(app)/quotes/lookups";
+import { NewCustomerDialog } from "@/app/(app)/customers/components/new-customer-dialog";
 import type { EnrichedLine } from "@/lib/extractors/enrich";
 import {
+  appendLinesToExistingQuote,
   commitReviewToQuote,
   commitReviewToVendorQuotes,
   rejectReview,
@@ -105,6 +109,13 @@ export function ReviewEditor({
         l.qty != null,
     })),
   );
+  const [useExistingQuote, setUseExistingQuote] = useState(false);
+  const [existingQuote, setExistingQuote] = useState<{
+    quote_id: string;
+    display: string;
+  } | null>(null);
+  const [draftQuery, setDraftQuery] = useState("");
+  const [draftResults, setDraftResults] = useState<DraftQuoteResult[]>([]);
   const [committing, startCommit] = useTransition();
   const [, startReject] = useTransition();
 
@@ -129,7 +140,25 @@ export function ReviewEditor({
   useEffect(() => {
     setPartyQuery("");
     setPartyResults([]);
+    setUseExistingQuote(false);
+    setExistingQuote(null);
+    setDraftQuery("");
+    setDraftResults([]);
   }, [mode]);
+
+  // Search draft quotes when "Add to existing" is selected.
+  useEffect(() => {
+    if (mode !== "customer" || !useExistingQuote || existingQuote) return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const rows = await searchDraftQuotesAction(draftQuery);
+      if (!cancelled) setDraftResults(rows);
+    }, 150);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [mode, useExistingQuote, existingQuote, draftQuery]);
 
   const update = (idx: number, patch: Partial<LineDraft>) => {
     setLines((prev) =>
@@ -140,7 +169,12 @@ export function ReviewEditor({
   const acceptedCount = lines.filter((l) => l.accepted).length;
 
   const onCommit = () => {
-    if (!picked) {
+    if (mode === "customer" && useExistingQuote) {
+      if (!existingQuote) {
+        toast.error("Pick a draft quote to append to");
+        return;
+      }
+    } else if (!picked) {
       toast.error(`Pick a ${mode === "customer" ? "customer" : "vendor"} first`);
       return;
     }
@@ -160,26 +194,43 @@ export function ReviewEditor({
         );
         return;
       }
-      startCommit(async () => {
-        const result = await commitReviewToQuote({
-          event_id: eventId,
-          customer_id: picked.id,
-          lines: ready.map((l) => ({
-            part_id: l.part_id!,
-            qty: Number(l.qty),
-            unit_price: l.unit_price === "" ? null : Number(l.unit_price),
-            raw_text: l.raw_text,
-            part_number_guess: l.part_number_guess,
-            reasoning: l.reasoning,
-          })),
+      const mappedLines = ready.map((l) => ({
+        part_id: l.part_id!,
+        qty: Number(l.qty),
+        unit_price: l.unit_price === "" ? null : Number(l.unit_price),
+        raw_text: l.raw_text,
+        part_number_guess: l.part_number_guess,
+        reasoning: l.reasoning,
+      }));
+      if (useExistingQuote && existingQuote) {
+        startCommit(async () => {
+          const result = await appendLinesToExistingQuote({
+            event_id: eventId,
+            quote_id: existingQuote.quote_id,
+            lines: mappedLines,
+          });
+          if (!result.ok) {
+            toast.error(result.error.message);
+            return;
+          }
+          toast.success(`Lines appended to ${existingQuote.display}`);
+          router.push(`/quotes/${result.data.quote_id}`);
         });
-        if (!result.ok) {
-          toast.error(result.error.message);
-          return;
-        }
-        toast.success("Quote created");
-        router.push(`/quotes/${result.data.quote_id}`);
-      });
+      } else {
+        startCommit(async () => {
+          const result = await commitReviewToQuote({
+            event_id: eventId,
+            customer_id: picked!.id,
+            lines: mappedLines,
+          });
+          if (!result.ok) {
+            toast.error(result.error.message);
+            return;
+          }
+          toast.success("Quote created");
+          router.push(`/quotes/${result.data.quote_id}`);
+        });
+      }
     } else {
       const ready = accepted.filter(
         (l) => l.part_id && l.unit_price.trim() && Number(l.unit_price) > 0,
@@ -197,7 +248,7 @@ export function ReviewEditor({
       startCommit(async () => {
         const result = await commitReviewToVendorQuotes({
           event_id: eventId,
-          vendor_id: picked.id,
+          vendor_id: picked!.id,
           lines: ready.map((l) => ({
             part_id: l.part_id!,
             qty: l.qty === "" ? null : Number(l.qty),
@@ -308,11 +359,143 @@ export function ReviewEditor({
                 ))}
               </div>
             )}
+            {mode === "customer" && (
+              <NewCustomerDialog
+                onCreated={(c) => setPicked({ id: c.id, name: c.name })}
+                trigger={
+                  <button
+                    type="button"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    + Create new customer
+                  </button>
+                }
+              />
+            )}
           </div>
         )}
       </div>
 
-      <div className="rounded-md border">
+      {/* Mobile card layout */}
+      <div className="md:hidden space-y-3">
+        {lines.length === 0 ? (
+          <div className="text-center text-sm text-muted-foreground py-6 border rounded-md">
+            No lines extracted. Reject to clear this email.
+          </div>
+        ) : (
+          lines.map((line, idx) => (
+            <div
+              key={idx}
+              className={cn(
+                "rounded-lg border p-3 space-y-2",
+                line.accepted && "bg-muted/30 border-foreground/10",
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={line.accepted}
+                    onChange={(e) =>
+                      update(idx, { accepted: e.target.checked })
+                    }
+                  />
+                  {line.accepted ? "Accepted" : "Pending"}
+                </label>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[10px]",
+                    line.confidence >= 0.7
+                      ? "text-emerald-700 border-emerald-200"
+                      : "text-amber-700 border-amber-200",
+                  )}
+                >
+                  {(line.confidence * 100).toFixed(0)}%
+                </Badge>
+              </div>
+              <PartSearchCell
+                initialDisplay={line.part_display}
+                onSelect={(p) =>
+                  update(idx, {
+                    part_id: p.id,
+                    part_display: p.internal_pn,
+                    description: p.description,
+                  })
+                }
+                onClear={() =>
+                  update(idx, {
+                    part_id: null,
+                    part_display: "",
+                    description: null,
+                  })
+                }
+                placeholder="Search part…"
+              />
+              {line.match_source === "none" && !line.part_id && line.part_display.trim() && (
+                <InlineCreatePart
+                  aliasPn={line.part_display.trim()}
+                  suggestedDescription={line.description ?? line.raw_text}
+                  aliasSourceType={mode === "customer" ? "customer" : "vendor"}
+                  aliasSourceName={picked?.name ?? vendorHint ?? null}
+                  onCreated={(part) =>
+                    update(idx, {
+                      part_id: part.id,
+                      part_display: part.internal_pn,
+                      description: part.description,
+                      accepted: true,
+                    })
+                  }
+                />
+              )}
+              <div className="text-xs text-muted-foreground italic">
+                "{line.raw_text}"
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">Qty</div>
+                  <Input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={line.qty}
+                    onChange={(e) => update(idx, { qty: e.target.value })}
+                    className="h-8 text-right tabular-nums"
+                  />
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">
+                    {mode === "customer" ? "Unit $" : "Unit cost"}
+                  </div>
+                  <Input
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    value={line.unit_price}
+                    onChange={(e) => update(idx, { unit_price: e.target.value })}
+                    className="h-8 text-right tabular-nums"
+                  />
+                </div>
+              </div>
+              {mode === "vendor" && (
+                <div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">Lead time (days)</div>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={line.lead_time_days}
+                    onChange={(e) => update(idx, { lead_time_days: e.target.value })}
+                    className="h-8 text-right tabular-nums"
+                  />
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop table layout */}
+      <div className="hidden md:block rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -488,6 +671,100 @@ export function ReviewEditor({
         </Table>
       </div>
 
+      {mode === "customer" && (
+        <div className="rounded-md border p-3 space-y-2">
+          <div className="text-sm font-medium">Commit target</div>
+          <div className="inline-flex rounded-md border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => {
+                setUseExistingQuote(false);
+                setExistingQuote(null);
+                setDraftQuery("");
+                setDraftResults([]);
+              }}
+              className={cn(
+                "px-3 py-1 text-xs",
+                !useExistingQuote
+                  ? "bg-foreground text-background"
+                  : "hover:bg-muted",
+              )}
+            >
+              Create new quote
+            </button>
+            <button
+              type="button"
+              onClick={() => setUseExistingQuote(true)}
+              className={cn(
+                "px-3 py-1 text-xs border-l",
+                useExistingQuote
+                  ? "bg-foreground text-background"
+                  : "hover:bg-muted",
+              )}
+            >
+              Add to existing
+            </button>
+          </div>
+          {useExistingQuote && (
+            <>
+              {existingQuote ? (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm">{existingQuote.display}</span>
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setExistingQuote(null);
+                      setDraftQuery("");
+                    }}
+                  >
+                    change
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Search by quote number or customer name..."
+                    value={draftQuery}
+                    onChange={(e) => setDraftQuery(e.target.value)}
+                    className="h-8"
+                  />
+                  {draftResults.length > 0 && (
+                    <div className="rounded-md border max-h-48 overflow-auto">
+                      {draftResults.map((q) => (
+                        <button
+                          type="button"
+                          key={q.id}
+                          onClick={() =>
+                            setExistingQuote({
+                              quote_id: q.id,
+                              display: `Q-${q.quote_number} (${q.customer_name})`,
+                            })
+                          }
+                          className="block w-full text-left px-3 py-1.5 text-sm hover:bg-muted"
+                        >
+                          <span className="font-medium">Q-{q.quote_number}</span>
+                          <span className="mx-1.5 text-muted-foreground">—</span>
+                          <span>{q.customer_name}</span>
+                          <span className="ml-1.5 text-xs text-muted-foreground">
+                            ({q.line_count} line{q.line_count === 1 ? "" : "s"})
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {draftResults.length === 0 && draftQuery.trim() !== "" && (
+                    <div className="text-xs text-muted-foreground">
+                      No draft quotes found
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="text-xs text-muted-foreground">
           {acceptedCount} of {lines.length} line{lines.length === 1 ? "" : "s"}{" "}
@@ -501,7 +778,9 @@ export function ReviewEditor({
             {committing
               ? "Saving…"
               : mode === "customer"
-                ? `Create draft quote (${acceptedCount})`
+                ? useExistingQuote && existingQuote
+                  ? `Append to ${existingQuote.display} (${acceptedCount})`
+                  : `Create draft quote (${acceptedCount})`
                 : `Log vendor quotes (${acceptedCount})`}
           </Button>
         </div>

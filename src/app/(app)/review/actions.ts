@@ -159,6 +159,93 @@ async function captureAliasSuggestions(
   }
 }
 
+const AppendToExistingQuoteSchema = z.object({
+  event_id: z.string().uuid(),
+  quote_id: z.string().uuid(),
+  lines: z.array(AcceptedLineSchema).min(1, "Pick at least one line to commit"),
+});
+
+export async function appendLinesToExistingQuote(
+  input: z.input<typeof AppendToExistingQuoteSchema>,
+): Promise<ActionResult<{ quote_id: string }>> {
+  const parsed = AppendToExistingQuoteSchema.safeParse(input);
+  if (!parsed.success) return err("validation", parsed.error.issues[0].message);
+
+  try {
+    const supabase = createAdminClient();
+    const userId = await getCurrentUserId();
+
+    // Validate quote exists, is draft, and not deleted.
+    const { data: quote, error: qErr } = await supabase
+      .from("quotes")
+      .select("id, status, deleted_at")
+      .eq("id", parsed.data.quote_id)
+      .maybeSingle();
+    if (qErr) return err(qErr.code ?? "db_error", qErr.message);
+    if (!quote) return err("not_found", "Quote not found");
+    if (quote.deleted_at) return err("validation", "Quote has been deleted");
+    if (quote.status !== "draft")
+      return err("validation", "Quote is not a draft — can only append to drafts");
+
+    // Get max position from existing quote_lines for this quote.
+    const { data: maxRow } = await supabase
+      .from("quote_lines")
+      .select("position")
+      .eq("quote_id", quote.id)
+      .order("position", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const startPosition = (maxRow?.position ?? 0) + 1;
+
+    const linesPayload = parsed.data.lines.map((l, i) => ({
+      quote_id: quote.id,
+      part_id: l.part_id,
+      qty: l.qty,
+      unit_price: l.unit_price,
+      position: startPosition + i,
+      created_by: userId,
+      updated_by: userId,
+    }));
+    const { error: lErr } = await supabase
+      .from("quote_lines")
+      .insert(linesPayload);
+    if (lErr) return err(lErr.code ?? "db_error", lErr.message);
+
+    // Clear the review flag and link the quote.
+    await supabase
+      .from("email_events")
+      .update({
+        needs_review: false,
+        linked_quote_id: quote.id,
+        updated_by: userId,
+      })
+      .eq("id", parsed.data.event_id);
+
+    // Capture alias suggestions — best-effort.
+    try {
+      await captureAliasSuggestions(
+        parsed.data.lines.map((l) => ({
+          part_id: l.part_id,
+          raw_text: l.raw_text ?? null,
+          part_number_guess: l.part_number_guess ?? null,
+          reasoning: l.reasoning ?? null,
+        })),
+        parsed.data.event_id,
+        "customer",
+        userId,
+      );
+    } catch {
+      // swallow
+    }
+
+    revalidatePath("/review");
+    revalidatePath(`/quotes/${quote.id}`);
+    return ok({ quote_id: quote.id });
+  } catch (e) {
+    return fromException(e);
+  }
+}
+
 export async function commitReviewToQuoteAndRedirect(
   input: z.input<typeof CommitToQuoteSchema>,
 ) {

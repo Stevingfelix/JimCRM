@@ -178,6 +178,11 @@ export type PartDetail = {
     name: string;
     mime_type: string | null;
   }>;
+  vendor_price_history: Array<{
+    date: string;
+    unit_price: number;
+    vendor_name: string;
+  }>;
 };
 
 export async function getPartDetail(id: string): Promise<PartDetail | null> {
@@ -193,7 +198,7 @@ export async function getPartDetail(id: string): Promise<PartDetail | null> {
   if (error) throw new Error(error.message);
   if (!part) return null;
 
-  const [aliasesRes, linesRes, attachmentsRes] = await Promise.all([
+  const [aliasesRes, linesRes, attachmentsRes, vendorQuotesRes] = await Promise.all([
     supabase
       .from("part_aliases")
       .select("id, alias_pn, source_type, source_name")
@@ -212,11 +217,18 @@ export async function getPartDetail(id: string): Promise<PartDetail | null> {
       .select("id, drive_file_id, name, mime_type")
       .eq("part_id", id)
       .order("created_at", { ascending: true }),
+    supabase
+      .from("vendor_quotes")
+      .select("unit_price, quoted_at, vendors!inner(name)")
+      .eq("part_id", id)
+      .order("quoted_at", { ascending: true })
+      .limit(50),
   ]);
 
   if (aliasesRes.error) throw new Error(aliasesRes.error.message);
   if (linesRes.error) throw new Error(linesRes.error.message);
   if (attachmentsRes.error) throw new Error(attachmentsRes.error.message);
+  if (vendorQuotesRes.error) throw new Error(vendorQuotesRes.error.message);
 
   type LineRow = {
     id: string;
@@ -237,6 +249,20 @@ export async function getPartDetail(id: string): Promise<PartDetail | null> {
     customer_name: row.quotes.customers.name,
   }));
 
+  type VendorQuoteRow = {
+    unit_price: number;
+    quoted_at: string;
+    vendors: { name: string };
+  };
+
+  const vendor_price_history = (
+    (vendorQuotesRes.data ?? []) as unknown as VendorQuoteRow[]
+  ).map((row) => ({
+    date: row.quoted_at,
+    unit_price: row.unit_price,
+    vendor_name: row.vendors.name,
+  }));
+
   return {
     part: {
       id: part.id,
@@ -249,5 +275,6 @@ export async function getPartDetail(id: string): Promise<PartDetail | null> {
     aliases: (aliasesRes.data ?? []) as PartDetail["aliases"],
     history,
     attachments: attachmentsRes.data ?? [],
+    vendor_price_history,
   };
 }
