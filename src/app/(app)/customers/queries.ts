@@ -40,16 +40,15 @@ export async function listCustomers({
 
   if (term) {
     const like = `%${term}%`;
-    const [byName, byContact] = await Promise.all([
+    const [byName, byContactName, byContactEmail] = await Promise.all([
       supabase.from("customers").select("id").ilike("name", like),
-      supabase
-        .from("customer_contacts")
-        .select("customer_id, name, email")
-        .or(`name.ilike.${like},email.ilike.${like}`),
+      supabase.from("customer_contacts").select("customer_id").ilike("name", like),
+      supabase.from("customer_contacts").select("customer_id").ilike("email", like),
     ]);
     const set = new Set<string>();
     byName.data?.forEach((r) => set.add(r.id));
-    byContact.data?.forEach((r) => set.add(r.customer_id));
+    byContactName.data?.forEach((r) => set.add(r.customer_id));
+    byContactEmail.data?.forEach((r) => set.add(r.customer_id));
     ids = [...set];
     if (ids.length === 0) {
       return { rows: [], total: 0, page, pageSize: PAGE_SIZE };

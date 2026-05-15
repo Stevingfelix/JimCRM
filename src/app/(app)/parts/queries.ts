@@ -28,20 +28,35 @@ export async function listParts({
   const offset = (page - 1) * PAGE_SIZE;
   const term = q?.trim();
 
-  // Step 1: find candidate part ids
+  // Step 1: find candidate part ids via three parallel searches.
+  // We use separate .ilike() calls instead of .or() to avoid PostgREST
+  // filter-string parsing issues with special characters in ERPAG SKUs
+  // (commas, parentheses, backslashes, etc.).
   let partIds: string[] | null = null;
   if (term) {
     const like = `%${term}%`;
-    const [byPart, byAlias] = await Promise.all([
+    const [byPn, byDesc, byAlias] = await Promise.all([
       supabase
         .from("parts")
         .select("id")
         .is("deleted_at", null)
-        .or(`internal_pn.ilike.${like},description.ilike.${like}`),
-      supabase.from("part_aliases").select("part_id").ilike("alias_pn", like),
+        .ilike("internal_pn", like)
+        .limit(2000),
+      supabase
+        .from("parts")
+        .select("id")
+        .is("deleted_at", null)
+        .ilike("description", like)
+        .limit(2000),
+      supabase
+        .from("part_aliases")
+        .select("part_id")
+        .ilike("alias_pn", like)
+        .limit(2000),
     ]);
     const ids = new Set<string>();
-    byPart.data?.forEach((r) => ids.add(r.id));
+    byPn.data?.forEach((r) => ids.add(r.id));
+    byDesc.data?.forEach((r) => ids.add(r.id));
     byAlias.data?.forEach((r) => ids.add(r.part_id));
     partIds = [...ids];
     if (partIds.length === 0) {

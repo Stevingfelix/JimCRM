@@ -525,12 +525,21 @@ export async function searchPartsForLine(
   const like = `%${q.trim()}%`;
 
   const [partsRes, aliasesRes] = await Promise.all([
-    supabase
-      .from("parts")
-      .select("id, internal_pn, description")
-      .is("deleted_at", null)
-      .or(`internal_pn.ilike.${like},description.ilike.${like}`)
-      .limit(20),
+    // Two separate queries — avoids PostgREST .or() filter-string issues
+    // with special chars in part names (commas, parens, etc.)
+    (async () => {
+      const [byPn, byDesc] = await Promise.all([
+        supabase.from("parts").select("id, internal_pn, description")
+          .is("deleted_at", null).ilike("internal_pn", like).limit(20),
+        supabase.from("parts").select("id, internal_pn, description")
+          .is("deleted_at", null).ilike("description", like).limit(20),
+      ]);
+      type Row = NonNullable<typeof byPn.data>[0];
+      const seen = new Map<string, Row>();
+      byPn.data?.forEach((r) => seen.set(r.id, r));
+      byDesc.data?.forEach((r) => { if (!seen.has(r.id)) seen.set(r.id, r); });
+      return { data: [...seen.values()].slice(0, 20), error: null };
+    })(),
     supabase
       .from("part_aliases")
       .select("part_id, alias_pn")

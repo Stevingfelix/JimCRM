@@ -20,12 +20,21 @@ export async function globalSearch(qRaw: string): Promise<GlobalSearchHit[]> {
 
   const [partsRes, customersRes, vendorsRes, quotesByNumberRes] =
     await Promise.all([
-      supabase
-        .from("parts")
-        .select("id, internal_pn, description")
-        .or(`internal_pn.ilike.${like},description.ilike.${like}`)
-        .is("deleted_at", null)
-        .limit(PER_KIND_LIMIT),
+      // Two separate .ilike() queries merged — avoids PostgREST .or() parsing
+      // issues with special chars in ERPAG part names (commas, parens, etc.)
+      (async () => {
+        const [byPn, byDesc] = await Promise.all([
+          supabase.from("parts").select("id, internal_pn, description")
+            .ilike("internal_pn", like).is("deleted_at", null).limit(PER_KIND_LIMIT),
+          supabase.from("parts").select("id, internal_pn, description")
+            .ilike("description", like).is("deleted_at", null).limit(PER_KIND_LIMIT),
+        ]);
+        type Row = NonNullable<typeof byPn.data>[0];
+        const seen = new Map<string, Row>();
+        byPn.data?.forEach((r) => seen.set(r.id, r));
+        byDesc.data?.forEach((r) => { if (!seen.has(r.id)) seen.set(r.id, r); });
+        return { data: [...seen.values()].slice(0, PER_KIND_LIMIT), error: null };
+      })(),
       supabase
         .from("customers")
         .select("id, name")
