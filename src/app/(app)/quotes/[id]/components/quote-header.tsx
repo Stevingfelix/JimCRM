@@ -25,7 +25,6 @@ import {
   ExternalLink,
   Link2,
   Mail,
-  FileText,
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";

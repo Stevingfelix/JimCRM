@@ -449,7 +449,7 @@ export function ReviewEditor({
                 />
               )}
               <div className="text-xs text-muted-foreground italic">
-                "{line.raw_text}"
+                &ldquo;{line.raw_text}&rdquo;
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
