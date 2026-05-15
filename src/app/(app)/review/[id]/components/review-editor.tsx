@@ -455,11 +455,11 @@ export function ReviewEditor({
                 <div>
                   <div className="text-[10px] text-muted-foreground mb-0.5">Qty</div>
                   <Input
-                    type="number"
-                    step="any"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={line.qty}
                     onChange={(e) => update(idx, { qty: e.target.value })}
+                    placeholder="0"
                     className="h-8 text-right tabular-nums"
                   />
                 </div>
@@ -468,11 +468,11 @@ export function ReviewEditor({
                     {mode === "customer" ? "Unit $" : "Unit cost"}
                   </div>
                   <Input
-                    type="number"
-                    step="0.0001"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={line.unit_price}
                     onChange={(e) => update(idx, { unit_price: e.target.value })}
+                    placeholder={mode === "customer" ? "optional" : "0.00"}
                     className="h-8 text-right tabular-nums"
                   />
                 </div>
@@ -481,10 +481,11 @@ export function ReviewEditor({
                 <div>
                   <div className="text-[10px] text-muted-foreground mb-0.5">Lead time (days)</div>
                   <Input
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
                     value={line.lead_time_days}
                     onChange={(e) => update(idx, { lead_time_days: e.target.value })}
+                    placeholder="—"
                     className="h-8 text-right tabular-nums"
                   />
                 </div>
@@ -611,33 +612,31 @@ export function ReviewEditor({
                   </TableCell>
                   <TableCell>
                     <Input
-                      type="number"
-                      step="any"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       value={line.qty}
                       onChange={(e) => update(idx, { qty: e.target.value })}
+                      placeholder="0"
                       className="h-8 text-right tabular-nums"
                     />
                   </TableCell>
                   <TableCell>
                     <Input
-                      type="number"
-                      step="0.0001"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       value={line.unit_price}
                       onChange={(e) =>
                         update(idx, { unit_price: e.target.value })
                       }
-                      placeholder={mode === "customer" ? "optional" : "required"}
+                      placeholder={mode === "customer" ? "optional" : "0.00"}
                       className="h-8 text-right tabular-nums"
                     />
                   </TableCell>
                   {mode === "vendor" && (
                     <TableCell>
                       <Input
-                        type="number"
-                        step="1"
-                        min="0"
+                        type="text"
+                        inputMode="numeric"
                         value={line.lead_time_days}
                         onChange={(e) =>
                           update(idx, { lead_time_days: e.target.value })
