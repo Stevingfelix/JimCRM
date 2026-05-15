@@ -31,9 +31,12 @@ export async function getNotifications(
     (userData.user?.user_metadata?.last_notifications_seen_at as string | undefined) ??
     null;
 
+  // Only show emails that actually need attention — skip marketing,
+  // transactional, and other noise that Haiku already filtered out.
   const recentRes = await supabase
     .from("email_events")
     .select("id, parse_status, needs_review, received_at, parsed_payload")
+    .or("needs_review.eq.true,parse_status.eq.parsed,parse_status.eq.failed")
     .order("received_at", { ascending: false, nullsFirst: false })
     .limit(limit);
 
@@ -63,16 +66,16 @@ export async function getNotifications(
     }),
   );
 
-  // Unread = events received after the user's last_seen mark.
+  // Unread = events needing review that arrived after last_seen.
   let unreadCount = 0;
+  const reviewable = recent.filter((e) => e.needs_review);
   if (lastSeen) {
     const cutoff = Date.parse(lastSeen);
-    unreadCount = recent.filter(
+    unreadCount = reviewable.filter(
       (e) => e.received_at && Date.parse(e.received_at) > cutoff,
     ).length;
   } else if (user) {
-    // No last_seen recorded yet → unread = anything that needs_review
-    unreadCount = recent.filter((e) => e.needs_review).length;
+    unreadCount = reviewable.length;
   }
 
   return {

@@ -172,13 +172,17 @@ export async function processMessage(
   // call at all. Skips marketing / transactional / OOO / non-quote business
   // mail before it hits the expensive extractor.
   //
-  // Fast path: emails with PDF/Excel attachments always go to extraction —
-  // at CAP these are almost always quote documents. No point asking Haiku.
+  // Fast paths that bypass Haiku entirely:
+  // 1. PDF/Excel attachments — almost always quote documents at CAP.
+  // 2. Body contains mil-spec part number patterns (MS, NAS, AN, BAC, etc.)
   const hasQuoteAttachments = attachmentMeta.some(
     (a) => a.kind === "pdf" || a.kind === "excel",
   );
+  const hasPartNumbers = /\b(MS|NAS|AN|BAC|CAP-|HL|CR)\d{2,}/i.test(
+    msg.body_text.slice(0, 2000),
+  );
   let triage: TriageVerdict | null = null;
-  if (!hasQuoteAttachments) {
+  if (!hasQuoteAttachments && !hasPartNumbers) {
     try {
       triage = await triageEmail({
         subject: msg.subject,
