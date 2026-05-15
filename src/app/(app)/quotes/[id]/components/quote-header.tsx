@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail } from "lucide-react";
+import {
+  ChevronLeft,
+  Copy,
+  ExternalLink,
+  Link2,
+  Mail,
+  FileText,
+  Trash2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatQuoteNumber } from "@/lib/format";
 import {
@@ -43,12 +50,12 @@ const TERMINAL_STATUSES = new Set<Status>(["won", "lost", "expired"]);
 
 const STATUS_STYLES: Record<Status, string> = {
   draft:
-    "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700",
-  sent: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-900",
-  won: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-900",
-  lost: "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-200 dark:border-rose-900",
+    "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
+  sent: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800",
+  won: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800",
+  lost: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800",
   expired:
-    "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700",
+    "bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
 };
 
 type Props = {
@@ -176,36 +183,40 @@ export function QuoteHeader({ quote, templates, lines, customerContacts }: Props
   return (
     <div className="space-y-4">
       {/* Breadcrumb */}
-      <div className="flex items-center text-sm text-muted-foreground gap-1">
-        <Link href="/quotes" className="hover:underline">
-          Quotes
-        </Link>
-        <span>›</span>
-        <span className="text-foreground font-medium tabular-nums">
-          {formatQuoteNumber(quote.quote_number)}
-        </span>
-        <span className="text-muted-foreground">·</span>
+      <div className="flex items-center gap-2">
         <Link
-          href={`/customers/${quote.customer_id}`}
-          className="hover:underline"
+          href="/quotes"
+          className="inline-flex items-center justify-center size-8 rounded-full border hover:bg-muted transition-colors"
         >
-          {quote.customer_name}
+          <ChevronLeft className="size-4" />
         </Link>
+        <div className="text-sm">
+          <span className="font-semibold tabular-nums">
+            Quote {formatQuoteNumber(quote.quote_number)}
+          </span>
+          <span className="text-muted-foreground mx-1.5">·</span>
+          <Link
+            href={`/customers/${quote.customer_id}`}
+            className="text-muted-foreground hover:underline"
+          >
+            {quote.customer_name}
+          </Link>
+        </div>
       </div>
 
-      {/* Action toolbar */}
-      <div className="rounded-xl border bg-card px-3 py-2.5 sm:px-4 flex flex-wrap items-center gap-2">
-        {/* Status pill dropdown */}
+      {/* Action toolbar — inspired by invoice UIs: status pill + action buttons */}
+      <div className="rounded-2xl border bg-card px-4 py-3 sm:px-5 flex flex-wrap items-center gap-2.5">
+        {/* Status pill */}
         <DropdownMenu>
           <DropdownMenuTrigger
             disabled={statusPending}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium capitalize transition hover:opacity-80 disabled:opacity-60",
+              "inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-semibold capitalize transition hover:opacity-80 disabled:opacity-60",
               STATUS_STYLES[status],
             )}
           >
             {status}
-            <span aria-hidden className="text-[10px] opacity-70">
+            <span aria-hidden className="text-[10px] opacity-60">
               ▾
             </span>
           </DropdownMenuTrigger>
@@ -223,57 +234,46 @@ export function QuoteHeader({ quote, templates, lines, customerContacts }: Props
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={onSend}>
-            Send ↗
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setEmailOpen(true)}
-            className="gap-1.5"
-          >
-            <Mail className="h-3.5 w-3.5" />
-            Email
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onShare}
-            disabled={!quote.public_token}
-            title={
-              quote.public_token
-                ? "Copy customer-facing link"
-                : "No public link yet"
-            }
-          >
-            Share
-          </Button>
-          <RfqDialog
-            quoteId={quote.id}
-            quoteNumber={quote.quote_number}
-            lines={lines}
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onDuplicate}
-            disabled={pending}
-          >
-            Duplicate
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onDelete}
-            disabled={pending}
-          >
-            Delete
-          </Button>
-        </div>
+        {/* Divider */}
+        <div className="w-px h-6 bg-border hidden sm:block" />
+
+        {/* Action buttons — outlined pill style */}
+        <ActionButton icon={<ExternalLink />} label="Print/Save PDF" onClick={onSend} />
+        <ActionButton
+          icon={<Mail />}
+          label="Email Quote"
+          onClick={() => setEmailOpen(true)}
+        />
+        <ActionButton
+          icon={<Link2 />}
+          label="Share Link"
+          onClick={onShare}
+          disabled={!quote.public_token}
+        />
+
+        <div className="w-px h-6 bg-border hidden sm:block" />
+
+        <RfqDialog
+          quoteId={quote.id}
+          quoteNumber={quote.quote_number}
+          lines={lines}
+        />
+        <ActionButton
+          icon={<Copy />}
+          label="Duplicate"
+          onClick={onDuplicate}
+          disabled={pending}
+        />
+        <ActionButton
+          icon={<Trash2 />}
+          label="Delete"
+          onClick={onDelete}
+          disabled={pending}
+          destructive
+        />
       </div>
 
-      {/* Secondary settings strip — validity + template */}
+      {/* Settings strip — validity + template */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
         <div className="grid gap-1.5">
           <Label htmlFor="validity" className="text-xs text-muted-foreground">
@@ -331,5 +331,37 @@ export function QuoteHeader({ quote, templates, lines, customerContacts }: Props
         defaultValidity={quote.validity_date}
       />
     </div>
+  );
+}
+
+function ActionButton({
+  icon,
+  label,
+  onClick,
+  disabled,
+  destructive,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  destructive?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-medium transition",
+        "hover:bg-muted disabled:opacity-50 disabled:pointer-events-none",
+        destructive
+          ? "text-rose-600 border-rose-200 hover:bg-rose-50 dark:text-rose-400 dark:border-rose-800 dark:hover:bg-rose-950"
+          : "text-foreground/80 border-foreground/10 hover:border-foreground/20",
+      )}
+    >
+      <span className="size-3.5 [&>svg]:size-3.5">{icon}</span>
+      <span className="hidden sm:inline">{label}</span>
+    </button>
   );
 }
