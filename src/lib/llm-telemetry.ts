@@ -35,6 +35,7 @@ export type LlmCallType =
   | "email_body"
   | "pdf_attachment"
   | "excel_attachment"
+  | "image_attachment"
   | "price_suggest"
   | "triage";
 

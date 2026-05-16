@@ -57,13 +57,13 @@ export type AttachmentMeta = {
   filename: string;
   mime_type: string | null;
   size: number | null;
-  kind: "pdf" | "excel" | null;
+  kind: "pdf" | "excel" | "image" | null;
   attachment_id?: string;
 };
 
 export type AttachmentResult = {
   filename: string;
-  kind: "pdf" | "excel" | null;
+  kind: "pdf" | "excel" | "image" | null;
   extraction: ExtractionResult | null;
   error: string | null;
 };
@@ -77,6 +77,7 @@ export type ReviewDetail = {
   sender_email: string | null;
   sender_name: string | null;
   body_text: string | null;
+  body_html: string | null;
   extraction: ExtractionResult | null;
   enriched: EnrichedLine[];
   matched_customer:
@@ -101,6 +102,7 @@ export async function getReviewDetail(id: string): Promise<ReviewDetail | null> 
     sender?: { email?: string | null; name?: string | null };
     subject?: string | null;
     body_text?: string | null;
+    body_html?: string | null;
     body_preview?: string | null;
     extraction?: ExtractionResult;
     enriched?: EnrichedLine[];
@@ -123,6 +125,7 @@ export async function getReviewDetail(id: string): Promise<ReviewDetail | null> 
     sender_email: p.sender?.email ?? null,
     sender_name: p.sender?.name ?? null,
     body_text: p.body_text ?? p.body_preview ?? null,
+    body_html: p.body_html ?? null,
     extraction: p.extraction ?? null,
     enriched: p.enriched ?? [],
     matched_customer: p.matched_customer ?? null,

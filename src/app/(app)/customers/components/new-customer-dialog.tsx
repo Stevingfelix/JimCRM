@@ -34,17 +34,20 @@ type Props = {
   onCreated?: (customer: { id: string; name: string }) => void;
   // Custom trigger element. Defaults to a "+ New customer" pill button.
   trigger?: React.ReactNode;
+  // Pre-fill hints (e.g. from an inbound email sender).
+  defaultContactName?: string;
+  defaultEmail?: string;
 };
 
-export function NewCustomerDialog({ onCreated, trigger }: Props = {}) {
+export function NewCustomerDialog({ onCreated, trigger, defaultContactName, defaultEmail }: Props = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [aiMode, setAiMode] = useState<"voice" | "text" | null>(null);
   const [processing, setProcessing] = useState(false);
 
   const [name, setName] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [email, setEmail] = useState("");
+  const [contactName, setContactName] = useState(defaultContactName ?? "");
+  const [email, setEmail] = useState(defaultEmail ?? "");
   const [phone, setPhone] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
   const [pending, startTransition] = useTransition();

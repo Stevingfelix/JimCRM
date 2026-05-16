@@ -100,6 +100,14 @@ The first non-empty row in each sheet is typically the header. Column names vary
 
 Skip rows that obviously aren't line items: TOTAL, Subtotal, blank rows, page-footer artifacts. If multiple sheets contain line items, return them all.`;
 
+export const IMAGE_ADDENDUM = `Input type: Photograph or screenshot of a quote, purchase order, parts list, or price sheet.
+
+Read the image visually. If it contains a table of line items (part numbers, quantities, prices), extract each row. If the image is a photo of a printed document, read the text from the image.
+
+If the image is a logo, signature, company letterhead, or decorative graphic with no part numbers or line items, return source_type="other" and lines=[].
+
+Common image types: scanned PO pages, screenshots of spreadsheets, photos of vendor price lists, whiteboard notes with part numbers.`;
+
 // Shared tool schema. Lives here so all three extractors call out the
 // exact same shape — keeps the schema in sync with _pattern.ts.
 export const EXTRACTION_TOOL = {

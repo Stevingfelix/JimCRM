@@ -12,6 +12,7 @@ export type ParsedMessage = {
   to: string | null;
   subject: string | null;
   body_text: string;
+  body_html: string | null;
   attachments: AttachmentRef[];
 };
 
@@ -75,6 +76,7 @@ export async function getMessage(
     to: headerVal("To"),
     subject: headerVal("Subject"),
     body_text: extractBodyText(m.payload),
+    body_html: extractBodyHtml(m.payload),
     attachments: listAttachmentRefs(m.payload),
   };
 }
@@ -84,6 +86,16 @@ type Part = {
   body?: { data?: string | null; size?: number | null } | null;
   parts?: Part[];
 };
+
+function extractBodyHtml(payload: Part | null | undefined): string | null {
+  if (!payload) return null;
+  const html = findPart(payload, "text/html");
+  if (html?.body?.data) return decodeBase64Url(html.body.data);
+  if (payload.body?.data && payload.mimeType?.includes("html")) {
+    return decodeBase64Url(payload.body.data);
+  }
+  return null;
+}
 
 function extractBodyText(payload: Part | null | undefined): string {
   if (!payload) return "";

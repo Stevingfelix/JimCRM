@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatDate } from "@/lib/format";
 import { getReviewDetail } from "../queries";
 import { ReviewEditor } from "./components/review-editor";
+import { EmailBodySection } from "./components/email-body-section";
 
 export default async function ReviewDetailPage({
   params,
@@ -97,6 +98,8 @@ export default async function ReviewDetailPage({
           initialLines={detail.enriched}
           initialCustomer={detail.matched_customer}
           vendorHint={detail.extraction?.customer_or_vendor_hint ?? null}
+          senderName={detail.sender_name}
+          senderEmail={detail.sender_email}
         />
       </section>
 
@@ -185,14 +188,11 @@ export default async function ReviewDetailPage({
 
       <Separator />
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold tracking-tight">
-          Original email body
-        </h2>
-        <pre className="text-xs bg-muted/40 rounded-md p-3 overflow-auto max-h-80 whitespace-pre-wrap font-sans">
-          {detail.body_text ?? "(empty)"}
-        </pre>
-      </section>
+      <EmailBodySection
+        bodyText={detail.body_text}
+        bodyHtml={detail.body_html}
+        gmailMsgId={detail.gmail_msg_id}
+      />
     </div>
   );
 }

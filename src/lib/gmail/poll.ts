@@ -13,6 +13,7 @@ import {
 import { extractEmailBody } from "@/lib/extractors/email-body";
 import { extractPdfAttachment } from "@/lib/extractors/pdf-attachment";
 import { extractExcelAttachment } from "@/lib/extractors/excel-attachment";
+import { extractImageAttachment } from "@/lib/extractors/image-attachment";
 import {
   enrichLine,
   findCustomerByEmail,
@@ -176,7 +177,7 @@ export async function processMessage(
   // 1. PDF/Excel attachments — almost always quote documents at CAP.
   // 2. Body contains mil-spec part number patterns (MS, NAS, AN, BAC, etc.)
   const hasQuoteAttachments = attachmentMeta.some(
-    (a) => a.kind === "pdf" || a.kind === "excel",
+    (a) => a.kind === "pdf" || a.kind === "excel" || a.kind === "image",
   );
   const hasPartNumbers = /\b(MS|NAS|AN|BAC|CAP-|HL|CR)\d{2,}/i.test(
     msg.body_text.slice(0, 2000),
@@ -240,7 +241,7 @@ export async function processMessage(
   // calls and keep cost predictable per poll tick.
   const attachmentExtractions: Array<{
     filename: string;
-    kind: "pdf" | "excel";
+    kind: "pdf" | "excel" | "image";
     extraction: ExtractionResult | null;
     error: string | null;
   }> = [];
@@ -259,7 +260,13 @@ export async function processMessage(
       const extraction =
         kind === "pdf"
           ? await extractPdfAttachment({ filename: att.filename, buffer })
-          : await extractExcelAttachment({ filename: att.filename, buffer });
+          : kind === "image"
+            ? await extractImageAttachment({
+                filename: att.filename,
+                buffer,
+                mime_type: att.mime_type,
+              })
+            : await extractExcelAttachment({ filename: att.filename, buffer });
       attachmentExtractions.push({
         filename: att.filename,
         kind,
@@ -368,6 +375,7 @@ export async function processMessage(
         sender: { email: msg.from_email, name: msg.from_name },
         subject: msg.subject,
         body_text: msg.body_text,
+        body_html: msg.body_html,
         extraction: {
           source_type: effectiveSourceType,
           customer_or_vendor_hint:

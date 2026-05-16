@@ -68,6 +68,8 @@ type Props = {
     | { customer_id: string; customer_name: string }
     | null;
   vendorHint: string | null;
+  senderName?: string | null;
+  senderEmail?: string | null;
 };
 
 export function ReviewEditor({
@@ -76,6 +78,8 @@ export function ReviewEditor({
   initialLines,
   initialCustomer,
   vendorHint,
+  senderName,
+  senderEmail,
 }: Props) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(defaultMode);
@@ -362,12 +366,19 @@ export function ReviewEditor({
             {mode === "customer" && (
               <NewCustomerDialog
                 onCreated={(c) => setPicked({ id: c.id, name: c.name })}
+                defaultContactName={senderName ?? undefined}
+                defaultEmail={senderEmail ?? undefined}
                 trigger={
                   <button
                     type="button"
                     className="text-sm text-primary hover:underline"
                   >
                     + Create new customer
+                    {senderName && (
+                      <span className="text-muted-foreground font-normal ml-1">
+                        ({senderName})
+                      </span>
+                    )}
                   </button>
                 }
               />
@@ -432,6 +443,11 @@ export function ReviewEditor({
                 }
                 placeholder="Search part…"
               />
+              {line.match_source === "none" && !line.part_id && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-2 py-1.5 text-xs text-amber-800 dark:text-amber-300 font-medium">
+                  New part — not in catalog
+                </div>
+              )}
               {line.match_source === "none" && !line.part_id && line.part_display.trim() && (
                 <InlineCreatePart
                   aliasPn={line.part_display.trim()}
@@ -571,8 +587,8 @@ export function ReviewEditor({
                     )}
                     {line.match_source === "none" && !line.part_id && (
                       <>
-                        <div className="text-[10px] text-rose-700 mt-1">
-                          no part match — pick one, create new, or reject
+                        <div className="mt-1.5 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-2 py-1.5 text-xs text-amber-800 dark:text-amber-300 font-medium">
+                          New part — not in catalog. Pick an existing part, or create a new one below.
                         </div>
                         {line.part_display.trim() && (
                           <InlineCreatePart

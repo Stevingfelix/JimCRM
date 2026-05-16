@@ -14,6 +14,13 @@ const EXCEL_MIMES = new Set([
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ]);
+const IMAGE_MIMES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/tiff",
+]);
 
 type Part = {
   filename?: string | null;
@@ -26,18 +33,38 @@ export function isSupportedAttachment(p: Part): boolean {
   const mime = p.mimeType ?? "";
   if (mime === PDF_MIME) return true;
   if (EXCEL_MIMES.has(mime)) return true;
-  // Some mail clients send Excel as application/octet-stream — sniff filename.
+  if (IMAGE_MIMES.has(mime)) return true;
   const fn = (p.filename ?? "").toLowerCase();
-  return fn.endsWith(".pdf") || fn.endsWith(".xlsx") || fn.endsWith(".xls");
+  return (
+    fn.endsWith(".pdf") ||
+    fn.endsWith(".xlsx") ||
+    fn.endsWith(".xls") ||
+    fn.endsWith(".jpg") ||
+    fn.endsWith(".jpeg") ||
+    fn.endsWith(".png") ||
+    fn.endsWith(".gif") ||
+    fn.endsWith(".webp")
+  );
 }
 
-export function attachmentKind(p: Part): "pdf" | "excel" | null {
+export function attachmentKind(
+  p: Part,
+): "pdf" | "excel" | "image" | null {
   const mime = p.mimeType ?? "";
   if (mime === PDF_MIME) return "pdf";
   if (EXCEL_MIMES.has(mime)) return "excel";
+  if (IMAGE_MIMES.has(mime)) return "image";
   const fn = (p.filename ?? "").toLowerCase();
   if (fn.endsWith(".pdf")) return "pdf";
   if (fn.endsWith(".xlsx") || fn.endsWith(".xls")) return "excel";
+  if (
+    fn.endsWith(".jpg") ||
+    fn.endsWith(".jpeg") ||
+    fn.endsWith(".png") ||
+    fn.endsWith(".gif") ||
+    fn.endsWith(".webp")
+  )
+    return "image";
   return null;
 }
 

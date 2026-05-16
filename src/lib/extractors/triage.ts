@@ -92,7 +92,7 @@ export type TriageInput = {
   attachment_meta: Array<{
     filename: string;
     mime_type: string | null;
-    kind: "pdf" | "excel" | null;
+    kind: "pdf" | "excel" | "image" | null;
   }>;
 };
 
