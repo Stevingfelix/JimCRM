@@ -1,12 +1,13 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/format";
-import { disconnectGmail, pollNow } from "../actions";
+import { disconnectGmail, pollNow, updateWatchedLabel } from "../actions";
 
 type Props = {
   status: {
@@ -21,6 +22,27 @@ export function GmailStatus({ status }: Props) {
   const router = useRouter();
   const [polling, startPoll] = useTransition();
   const [, startDisconnect] = useTransition();
+  const [editingLabel, setEditingLabel] = useState(false);
+  const [labelValue, setLabelValue] = useState(status.watched_label ?? "");
+  const [savingLabel, startSaveLabel] = useTransition();
+
+  const onSaveLabel = () => {
+    const trimmed = labelValue.trim();
+    if (!trimmed) {
+      toast.error("Label cannot be empty");
+      return;
+    }
+    startSaveLabel(async () => {
+      const result = await updateWatchedLabel(trimmed);
+      if (!result.ok) {
+        toast.error(result.error.message);
+        return;
+      }
+      toast.success(`Now watching label: ${trimmed}`);
+      setEditingLabel(false);
+      router.refresh();
+    });
+  };
 
   const onPoll = () => {
     startPoll(async () => {
@@ -67,7 +89,51 @@ export function GmailStatus({ status }: Props) {
                 {status.email}
               </span>{" "}
               · watching label{" "}
-              <code className="text-xs">{status.watched_label}</code>
+              {editingLabel ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Input
+                    value={labelValue}
+                    onChange={(e) => setLabelValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") onSaveLabel();
+                      if (e.key === "Escape") {
+                        setEditingLabel(false);
+                        setLabelValue(status.watched_label ?? "");
+                      }
+                    }}
+                    className="h-6 w-40 text-xs inline-flex"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={onSaveLabel}
+                    disabled={savingLabel}
+                    className="h-6 px-2 text-xs"
+                  >
+                    {savingLabel ? "…" : "Save"}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingLabel(false);
+                      setLabelValue(status.watched_label ?? "");
+                    }}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditingLabel(true)}
+                  className="text-xs text-foreground hover:underline"
+                  title="Click to change watched label"
+                >
+                  <code>{status.watched_label}</code>
+                </button>
+              )}
               {status.last_polled_at && (
                 <>
                   {" "}

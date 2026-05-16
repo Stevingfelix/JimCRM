@@ -455,3 +455,24 @@ export async function disconnectGmail(): Promise<ActionResult<void>> {
     return fromException(e);
   }
 }
+
+export async function updateWatchedLabel(
+  label: string,
+): Promise<ActionResult<void>> {
+  const trimmed = label.trim();
+  if (!trimmed || trimmed.length > 200) {
+    return err("validation", "Label must be 1-200 characters");
+  }
+  try {
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from("gmail_credentials")
+      .update({ watched_label: trimmed })
+      .eq("is_active", true);
+    if (error) return err(error.code ?? "db_error", error.message);
+    revalidatePath("/review");
+    return ok(undefined);
+  } catch (e) {
+    return fromException(e);
+  }
+}
