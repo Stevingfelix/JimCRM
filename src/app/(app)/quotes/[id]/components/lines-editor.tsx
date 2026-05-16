@@ -571,8 +571,9 @@ function NewLineRow({ quoteId }: { quoteId: string }) {
   const [pending, startTransition] = useTransition();
   const [partId, setPartId] = useState<string | null>(null);
   const [partDisplay, setPartDisplay] = useState("");
-  const [qty, setQty] = useState("");
+  const [qty, setQty] = useState("1");
   const [unitPrice, setUnitPrice] = useState("");
+  const qtyRef = useRef<HTMLInputElement>(null);
 
   const submit = (override?: { part?: PartSearchResult; qty?: string }) => {
     const finalPartId = override?.part?.id ?? partId;
@@ -608,6 +609,8 @@ function NewLineRow({ quoteId }: { quoteId: string }) {
           onSelect={(p) => {
             setPartId(p.id);
             setPartDisplay(p.internal_pn);
+            // Auto-focus qty so Jim can type a number and hit Enter
+            setTimeout(() => qtyRef.current?.focus(), 50);
           }}
           onClear={() => {
             setPartId(null);
@@ -619,6 +622,7 @@ function NewLineRow({ quoteId }: { quoteId: string }) {
       <TableCell />
       <TableCell>
         <Input
+          ref={qtyRef}
           type="text"
           inputMode="numeric"
           value={qty}
@@ -626,6 +630,7 @@ function NewLineRow({ quoteId }: { quoteId: string }) {
             const v = e.target.value.replace(/[^0-9.]/g, "");
             setQty(v);
           }}
+          onFocus={(e) => e.target.select()}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
