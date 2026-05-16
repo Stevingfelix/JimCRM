@@ -11,6 +11,7 @@ export type NotificationEvent = {
   parse_status: "pending" | "parsed" | "failed" | "skipped";
   received_at: string | null;
   line_count: number;
+  part_numbers: string[];
 };
 
 export type NotificationsPayload = {
@@ -40,6 +41,7 @@ export async function getNotifications(
     .order("received_at", { ascending: false, nullsFirst: false })
     .limit(limit);
 
+  type LineShape = { part_number_guess?: string | null };
   type Row = {
     id: string;
     parse_status: NotificationEvent["parse_status"];
@@ -48,12 +50,16 @@ export async function getNotifications(
     parsed_payload: {
       sender?: { email?: string | null; name?: string | null };
       subject?: string | null;
-      extraction?: { source_type?: string; lines?: unknown[] };
+      extraction?: { source_type?: string; lines?: LineShape[] };
     } | null;
   };
 
-  const recent: NotificationEvent[] = ((recentRes.data ?? []) as Row[]).map(
-    (r) => ({
+  const recent: NotificationEvent[] = ((recentRes.data ?? []) as Row[]).map((r) => {
+    const lines = r.parsed_payload?.extraction?.lines ?? [];
+    const pns = lines
+      .map((l) => l.part_number_guess)
+      .filter((pn): pn is string => !!pn);
+    return {
       id: r.id,
       subject: r.parsed_payload?.subject ?? null,
       sender_email: r.parsed_payload?.sender?.email ?? null,
@@ -62,9 +68,10 @@ export async function getNotifications(
       needs_review: r.needs_review,
       parse_status: r.parse_status,
       received_at: r.received_at,
-      line_count: r.parsed_payload?.extraction?.lines?.length ?? 0,
-    }),
-  );
+      line_count: lines.length,
+      part_numbers: pns.slice(0, 5),
+    };
+  });
 
   // Unread = events needing review that arrived after last_seen.
   let unreadCount = 0;

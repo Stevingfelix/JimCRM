@@ -30,29 +30,41 @@ function formatDateChip(iso: string | null): string {
     .toUpperCase();
 }
 
-// Map an email event to a presentable card: title + body + icon. Keeps the
-// dropdown agnostic of source-type details.
 function titleFor(e: NotificationEvent): string {
-  if (e.needs_review) return "Inbound email needs review";
+  const who = e.sender_name || e.sender_email?.split("@")[0] || "Someone";
+
   if (e.source_type === "customer_quote_request") {
-    return "New quote request";
+    if (e.part_numbers.length > 0) {
+      const shown = e.part_numbers.slice(0, 2).join(", ");
+      const extra = e.line_count - 2;
+      return extra > 0
+        ? `RFQ: ${shown} + ${extra} more`
+        : `RFQ: ${shown}`;
+    }
+    return `Quote request from ${who}`;
   }
   if (e.source_type === "vendor_quote_reply") {
-    return "Vendor pricing received";
+    return `Vendor pricing from ${who}`;
   }
-  return e.subject ?? "Inbound email";
+  if (e.part_numbers.length > 0) {
+    const shown = e.part_numbers.slice(0, 2).join(", ");
+    const extra = e.line_count - 2;
+    return extra > 0 ? `${shown} + ${extra} more` : shown;
+  }
+  return e.subject ?? `Email from ${who}`;
 }
 
 function bodyFor(e: NotificationEvent): string {
   const who = e.sender_name || e.sender_email || "Unknown sender";
-  if (e.needs_review) {
-    return `From ${who} — ${e.line_count} line${e.line_count === 1 ? "" : "s"} awaiting review.`;
-  }
+
   if (e.source_type === "customer_quote_request") {
-    return `${who} asked for pricing on ${e.line_count} item${e.line_count === 1 ? "" : "s"}.`;
+    return `${who} wants pricing on ${e.line_count} part${e.line_count === 1 ? "" : "s"}`;
   }
   if (e.source_type === "vendor_quote_reply") {
-    return `${who} replied with ${e.line_count} pricing line${e.line_count === 1 ? "" : "s"}.`;
+    return `${e.line_count} line${e.line_count === 1 ? "" : "s"} with pricing`;
+  }
+  if (e.needs_review) {
+    return `From ${who} — ${e.line_count} part${e.line_count === 1 ? "" : "s"} to review`;
   }
   return e.subject ?? `From ${who}`;
 }
