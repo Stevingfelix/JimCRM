@@ -262,6 +262,10 @@ const AcceptedVendorLineSchema = z.object({
   raw_text: z.string().optional().nullable(),
   part_number_guess: z.string().optional().nullable(),
   reasoning: z.string().optional().nullable(),
+  stock_status: z.string().optional().nullable(),
+  availability_date: z.string().optional().nullable(),
+  packaging_note: z.string().optional().nullable(),
+  weight: z.string().optional().nullable(),
 });
 
 const CommitToVendorQuotesSchema = z.object({
@@ -291,6 +295,10 @@ export async function commitReviewToVendorQuotes(
       quoted_at: now,
       source_message_id: parsed.data.event_id,
       source_note: "Auto-logged from email review",
+      stock_status: l.stock_status ?? null,
+      availability_date: l.availability_date ?? null,
+      packaging_note: l.packaging_note ?? null,
+      weight: l.weight ?? null,
       created_by: userId,
       updated_by: userId,
     }));

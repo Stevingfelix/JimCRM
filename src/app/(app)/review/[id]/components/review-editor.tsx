@@ -286,6 +286,10 @@ export function ReviewEditor({
             raw_text: l.raw_text,
             part_number_guess: l.part_number_guess,
             reasoning: l.reasoning,
+            stock_status: l.stock_status,
+            availability_date: l.availability_date,
+            packaging_note: l.packaging_note,
+            weight: l.weight,
           })),
         });
         if (!result.ok) {

@@ -1225,6 +1225,10 @@ export type Database = {
           quoted_at: string
           source_message_id: string | null
           source_note: string | null
+          stock_status: string | null
+          availability_date: string | null
+          packaging_note: string | null
+          weight: string | null
           unit_price: number
           updated_at: string
           updated_by: string | null
@@ -1240,6 +1244,10 @@ export type Database = {
           quoted_at?: string
           source_message_id?: string | null
           source_note?: string | null
+          stock_status?: string | null
+          availability_date?: string | null
+          packaging_note?: string | null
+          weight?: string | null
           unit_price: number
           updated_at?: string
           updated_by?: string | null
@@ -1255,6 +1263,10 @@ export type Database = {
           quoted_at?: string
           source_message_id?: string | null
           source_note?: string | null
+          stock_status?: string | null
+          availability_date?: string | null
+          packaging_note?: string | null
+          weight?: string | null
           unit_price?: number
           updated_at?: string
           updated_by?: string | null
