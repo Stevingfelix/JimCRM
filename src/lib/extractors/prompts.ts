@@ -2,7 +2,7 @@
 // attachment cache entry (see attachment-cache.ts) — bump whenever the
 // system text or extraction tool schema is changed in a way that should
 // produce different output.
-export const PROMPT_VERSION = "v5-2026-05-15-native-pdf";
+export const PROMPT_VERSION = "v6-2026-05-16-required-specs";
 
 // Common rules for all three extractors (email body, PDF, Excel). This
 // block is marked cache_control so it amortizes across every extractor
@@ -26,7 +26,15 @@ Hardware specification extraction (IMPORTANT — always extract these when prese
 - material: material if stated (e.g. "18-8 SS", "alloy steel", "brass", "A286").
 - finish: surface treatment if stated (e.g. "zinc", "yellow zinc", "cadmium", "passivated", "black oxide").
 - grade: strength grade/class if stated (e.g. "Grade 8", "Grade 5", "A2", "A4-80").
-These fields are nullable — only populate what is EXPLICITLY stated in the source text. Do NOT guess or infer specs that aren't written.`;
+- head_type: head style if stated (e.g. "hex", "socket", "pan", "flat", "button").
+
+Vendor quote metadata (extract when present in vendor pricing documents):
+- stock_status: availability (e.g. "in stock", "out of stock", "backordered").
+- availability_date: ship/availability date (e.g. "05/14/26").
+- packaging_note: packaging info (e.g. "1box=100pcs", "bag of 50").
+- weight: weight per unit or per hundred (e.g. "29.7600LBS/C", "0.5 lbs each").
+
+All fields are nullable — only populate what is EXPLICITLY stated in the source text. Do NOT guess or infer specs that aren't written.`;
 
 // CAP part-number composition rules. Pairs with the rendered reference
 // data (families/sizes/threads/attributes) injected at call time.
@@ -88,8 +96,12 @@ export const PDF_ADDENDUM = `Input type: PDF document attached directly (you can
 Use the visual structure of the document. Identify the line-item table by its column headers — typical names: "ITEM NO", "P/N", "Part Number", "CUST PART#", "Description", "Qty", "Quantity", "Cost/Per", "Net Unit Price", "Unit Price", "EXT AMT", "Total". Read one line per data row beneath those headers.
 
 Real vendor quote format examples seen in CAP's inbox:
-- Lindstrom: rows have "ITEM NO. / DESCRIPTION", "CUST PART #", "WH", "QUOTE DATE", "QUANTITY", "COST/PER", "WEIGHT", "EXT AMT". One line per item. "COST/PER" with a trailing "C" means cost per 100 — record the unit price as cost/100 in unit_price (so "61.19 C" → unit_price=0.6119).
+- Lindstrom: rows have "ITEM NO. / DESCRIPTION", "CUST PART #", "WH", "QUOTE DATE", "QUANTITY", "COST/PER", "WEIGHT", "EXT AMT". One line per item. "COST/PER" with a trailing "C" means cost per 100 — record the unit price as cost/100 in unit_price (so "61.19 C" → unit_price=0.6119). The DESCRIPTION field often contains "Your Description:" with spec details — ALWAYS parse these into the spec fields (description, thread_size, length, material, finish, grade).
+  Example: "HC10160701 04 - in stock M16X70 931-10.9 YZ ... Your Description: M16-2.0 x 70mm Hex Cap Screw Partial Threaded Grade 10 Yellow zinc plated"
+  → description="Hex Cap Screw Partial Threaded", thread_size="M16-2.0", length="70mm", grade="Grade 10", finish="Yellow zinc plated"
 - Helical Wire: rows have "Item", "Description", "Qty", "Net Unit Price", "Total". The "Item" column has the vendor PN; "Description" has both the customer's PN ("P/N 1428L0375L LOT") and the spec text.
+
+IMPORTANT: For every line, always extract hardware specs from the description/raw text. Vendor quotes often embed thread size, length, material, finish, and grade in the description column — do not ignore these. Return null only for specs truly absent from the text.
 
 Then read each data row beneath the header. Emit one line per data row.
 
@@ -173,6 +185,31 @@ export const EXTRACTION_TOOL = {
               description:
                 "Strength grade if stated (e.g. 'Grade 8', 'A2', 'A4-80')",
             },
+            head_type: {
+              type: ["string", "null"],
+              description:
+                "Head type if stated (e.g. 'hex', 'socket', 'pan', 'flat', 'button')",
+            },
+            stock_status: {
+              type: ["string", "null"],
+              description:
+                "Availability status if stated (e.g. 'in stock', 'out of stock', 'limited', 'backordered')",
+            },
+            availability_date: {
+              type: ["string", "null"],
+              description:
+                "Ship/availability date if stated (e.g. '05/14/26', '2026-05-14')",
+            },
+            packaging_note: {
+              type: ["string", "null"],
+              description:
+                "Packaging info if stated (e.g. '1box=100pcs', 'bag of 50', 'bulk')",
+            },
+            weight: {
+              type: ["string", "null"],
+              description:
+                "Weight info if stated (e.g. '29.7600LBS/C', '0.5 lbs each')",
+            },
             // CAP part-number breakdown. Null when the line doesn't fit
             // CAP's commercial schema (specials, aerospace, ambiguous).
             cap_pn_components: {
@@ -204,6 +241,17 @@ export const EXTRACTION_TOOL = {
             "unit_price",
             "confidence",
             "reasoning",
+            "description",
+            "thread_size",
+            "length",
+            "material",
+            "finish",
+            "grade",
+            "head_type",
+            "stock_status",
+            "availability_date",
+            "packaging_note",
+            "weight",
             "cap_pn_components",
           ],
         },

@@ -25,6 +25,7 @@ type Props = {
   suggestedMaterial?: string | null;
   suggestedFinish?: string | null;
   suggestedGrade?: string | null;
+  suggestedHeadType?: string | null;
   onCreated: (part: {
     id: string;
     internal_pn: string;
@@ -42,6 +43,7 @@ export function InlineCreatePart({
   suggestedMaterial,
   suggestedFinish,
   suggestedGrade,
+  suggestedHeadType,
   onCreated,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -57,6 +59,7 @@ export function InlineCreatePart({
   const [material, setMaterial] = useState(suggestedMaterial ?? "");
   const [finish, setFinish] = useState(suggestedFinish ?? "");
   const [grade, setGrade] = useState(suggestedGrade ?? "");
+  const [headType, setHeadType] = useState(suggestedHeadType ?? "");
   const [pending, startTransition] = useTransition();
 
   function reset() {
@@ -68,6 +71,7 @@ export function InlineCreatePart({
     setMaterial(suggestedMaterial ?? "");
     setFinish(suggestedFinish ?? "");
     setGrade(suggestedGrade ?? "");
+    setHeadType(suggestedHeadType ?? "");
   }
 
   function handleSave() {
@@ -87,6 +91,7 @@ export function InlineCreatePart({
         material: material.trim() || null,
         finish: finish.trim() || null,
         grade: grade.trim() || null,
+        head_type: headType.trim() || null,
       });
       if (!res.ok) {
         toast.error(res.error.message);
@@ -205,6 +210,15 @@ export function InlineCreatePart({
                     value={grade}
                     onChange={(e) => setGrade(e.target.value)}
                     placeholder="Grade 8"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">Head Type</div>
+                  <Input
+                    value={headType}
+                    onChange={(e) => setHeadType(e.target.value)}
+                    placeholder="hex"
                     className="h-8 text-xs"
                   />
                 </div>

@@ -29,7 +29,9 @@ import {
   searchVendorsAction,
   searchDraftQuotesAction,
   getVendorRecsAction,
+  getSimilarVendorRecsAction,
   type QuickVendorRec,
+  type SimilarVendorRec,
 } from "@/app/(app)/quotes/lookups";
 import type { DraftQuoteResult } from "@/app/(app)/quotes/lookups";
 import { NewCustomerDialog } from "@/app/(app)/customers/components/new-customer-dialog";
@@ -65,6 +67,11 @@ type LineDraft = {
   material: string | null;
   finish: string | null;
   grade: string | null;
+  head_type: string | null;
+  stock_status: string | null;
+  availability_date: string | null;
+  packaging_note: string | null;
+  weight: string | null;
 };
 
 type Props = {
@@ -123,6 +130,11 @@ export function ReviewEditor({
       material: l.material ?? null,
       finish: l.finish ?? null,
       grade: l.grade ?? null,
+      head_type: l.head_type ?? null,
+      stock_status: l.stock_status ?? null,
+      availability_date: l.availability_date ?? null,
+      packaging_note: l.packaging_note ?? null,
+      weight: l.weight ?? null,
     })),
   );
   const [useExistingQuote, setUseExistingQuote] = useState(false);
@@ -469,6 +481,12 @@ export function ReviewEditor({
                   New part — not in catalog
                 </div>
               )}
+              {line.match_source === "none" && !line.part_id && (
+                <SimilarVendorRecsInline
+                  threadSize={line.thread_size}
+                  material={line.material}
+                />
+              )}
               {line.match_source === "none" && !line.part_id && line.part_display.trim() && (
                 <InlineCreatePart
                   aliasPn={line.part_display.trim()}
@@ -480,6 +498,7 @@ export function ReviewEditor({
                   suggestedMaterial={line.material}
                   suggestedFinish={line.finish}
                   suggestedGrade={line.grade}
+                  suggestedHeadType={line.head_type}
                   onCreated={(part) =>
                     update(idx, {
                       part_id: part.id,
@@ -493,16 +512,7 @@ export function ReviewEditor({
               <div className="text-xs text-muted-foreground italic">
                 &ldquo;{line.raw_text}&rdquo;
               </div>
-              {(line.description || line.thread_size || line.length || line.material || line.finish || line.grade) && (
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
-                  {line.description && <span className="text-foreground font-medium">{line.description}</span>}
-                  {line.thread_size && <span>Thread: {line.thread_size}</span>}
-                  {line.length && <span>Length: {line.length}</span>}
-                  {line.material && <span>Material: {line.material}</span>}
-                  {line.finish && <span>Finish: {line.finish}</span>}
-                  {line.grade && <span>Grade: {line.grade}</span>}
-                </div>
-              )}
+              <SpecChips line={line} />
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <div className="text-[10px] text-muted-foreground mb-0.5">Qty</div>
@@ -635,6 +645,10 @@ export function ReviewEditor({
                         <div className="mt-1.5 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-2 py-1.5 text-xs text-amber-800 dark:text-amber-300 font-medium">
                           New part — not in catalog. Pick an existing part, or create a new one below.
                         </div>
+                        <SimilarVendorRecsInline
+                          threadSize={line.thread_size}
+                          material={line.material}
+                        />
                         {line.part_display.trim() && (
                           <InlineCreatePart
                             aliasPn={line.part_display.trim()}
@@ -652,6 +666,7 @@ export function ReviewEditor({
                             suggestedMaterial={line.material}
                             suggestedFinish={line.finish}
                             suggestedGrade={line.grade}
+                            suggestedHeadType={line.head_type}
                             onCreated={(part) =>
                               update(idx, {
                                 part_id: part.id,
@@ -675,16 +690,7 @@ export function ReviewEditor({
                     <div className="not-italic mt-1 text-[10px]">
                       {line.reasoning}
                     </div>
-                    {(line.description || line.thread_size || line.length || line.material || line.finish || line.grade) && (
-                      <div className="not-italic mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px]">
-                        {line.description && <span className="text-foreground font-medium">{line.description}</span>}
-                        {line.thread_size && <span>Thread: {line.thread_size}</span>}
-                        {line.length && <span>Length: {line.length}</span>}
-                        {line.material && <span>Material: {line.material}</span>}
-                        {line.finish && <span>Finish: {line.finish}</span>}
-                        {line.grade && <span>Grade: {line.grade}</span>}
-                      </div>
-                    )}
+                    <SpecChips line={line} className="not-italic" />
                   </TableCell>
                   <TableCell>
                     <Input
@@ -914,6 +920,48 @@ export function ReviewEditor({
   );
 }
 
+/** Displays all extracted specs as individually labeled chips. */
+function SpecChips({ line, className }: { line: LineDraft; className?: string }) {
+  const specs: { label: string; value: string; color?: string }[] = [];
+
+  if (line.description) specs.push({ label: "Type", value: line.description });
+  if (line.thread_size) specs.push({ label: "Thread", value: line.thread_size });
+  if (line.length) specs.push({ label: "Length", value: line.length });
+  if (line.head_type) specs.push({ label: "Head", value: line.head_type });
+  if (line.material) specs.push({ label: "Material", value: line.material });
+  if (line.finish) specs.push({ label: "Finish", value: line.finish });
+  if (line.grade) specs.push({ label: "Grade", value: line.grade });
+  if (line.stock_status) specs.push({
+    label: "Stock",
+    value: line.stock_status,
+    color: line.stock_status.toLowerCase().includes("in stock")
+      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+      : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+  });
+  if (line.availability_date) specs.push({ label: "Available", value: line.availability_date });
+  if (line.packaging_note) specs.push({ label: "Packaging", value: line.packaging_note });
+  if (line.weight) specs.push({ label: "Weight", value: line.weight });
+
+  if (specs.length === 0) return null;
+
+  return (
+    <div className={cn("mt-1.5 flex flex-wrap gap-1.5", className)}>
+      {specs.map((s) => (
+        <span
+          key={s.label}
+          className={cn(
+            "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px]",
+            s.color ?? "bg-muted text-muted-foreground",
+          )}
+        >
+          <span className="font-semibold">{s.label}:</span>
+          <span>{s.value}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /** Inline vendor recommendation that auto-fetches when a part is linked. */
 function VendorRecsInline({ partId }: { partId: string }) {
   const [recs, setRecs] = useState<QuickVendorRec[]>([]);
@@ -965,6 +1013,83 @@ function VendorRecsInline({ partId }: { partId: string }) {
               <span className="text-foreground">{a.vendor_name}</span>
               <span className="tabular-nums">${a.unit_price.toFixed(4)}</span>
               {a.lead_time_days != null && <span>{a.lead_time_days}d</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Vendor suggestions for NEW/unmatched parts — uses similar specs to find comparable pricing. */
+function SimilarVendorRecsInline({
+  threadSize,
+  material,
+  productFamily,
+}: {
+  threadSize?: string | null;
+  material?: string | null;
+  productFamily?: string | null;
+}) {
+  const [recs, setRecs] = useState<SimilarVendorRec[]>([]);
+  const [expanded, setExpanded] = useState(false);
+
+  const hasSpecs = !!(threadSize || material || productFamily);
+
+  useEffect(() => {
+    if (!hasSpecs) return;
+    let cancelled = false;
+    getSimilarVendorRecsAction({
+      thread_size: threadSize,
+      material,
+      product_family: productFamily,
+    }).then((r) => {
+      if (!cancelled) setRecs(r);
+    });
+    return () => { cancelled = true; };
+  }, [threadSize, material, productFamily, hasSpecs]);
+
+  if (recs.length === 0) return null;
+
+  const best = recs[0];
+  const alts = recs.slice(1);
+
+  return (
+    <div className="mt-1.5 rounded-md border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/30 px-2.5 py-1.5 text-[11px]">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex size-3.5 items-center justify-center rounded bg-blue-600 text-white text-[8px] font-bold shrink-0">
+          ~
+        </span>
+        <span className="text-muted-foreground">Similar:</span>
+        <span className="font-medium text-foreground">{best.vendor_name}</span>
+        <span className="tabular-nums font-medium text-blue-700 dark:text-blue-400">
+          ${best.unit_price.toFixed(4)}
+        </span>
+        {best.lead_time_days != null && (
+          <span className="text-muted-foreground">{best.lead_time_days}d</span>
+        )}
+        <span className="text-muted-foreground text-[9px]">({best.match_reason})</span>
+        {alts.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="ml-auto text-muted-foreground hover:text-foreground text-[10px]"
+          >
+            +{alts.length} more {expanded ? "▴" : "▾"}
+          </button>
+        )}
+      </div>
+      {expanded && alts.length > 0 && (
+        <div className="mt-1.5 pt-1.5 border-t border-blue-200 dark:border-blue-900 space-y-1">
+          {alts.map((a) => (
+            <div key={a.vendor_name + a.matched_part_pn} className="flex items-center gap-2 text-muted-foreground">
+              <span className="inline-flex size-3.5 items-center justify-center rounded bg-muted text-[8px] font-bold shrink-0">
+                ~
+              </span>
+              <span className="text-foreground">{a.vendor_name}</span>
+              <span className="tabular-nums">${a.unit_price.toFixed(4)}</span>
+              {a.lead_time_days != null && <span>{a.lead_time_days}d</span>}
+              <span className="text-[9px]">({a.match_reason})</span>
             </div>
           ))}
         </div>

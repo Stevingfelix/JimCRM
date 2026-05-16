@@ -36,6 +36,11 @@ function sanitizeLine(line: {
   material?: string | null;
   finish?: string | null;
   grade?: string | null;
+  head_type?: string | null;
+  stock_status?: string | null;
+  availability_date?: string | null;
+  packaging_note?: string | null;
+  weight?: string | null;
   cap_pn_components?: CapPnComponents;
 }) {
   const warnings: string[] = [];
@@ -117,6 +122,11 @@ function sanitizeLine(line: {
     material: line.material?.trim() || null,
     finish: line.finish?.trim() || null,
     grade: line.grade?.trim() || null,
+    head_type: line.head_type?.trim() || null,
+    stock_status: line.stock_status?.trim() || null,
+    availability_date: line.availability_date?.trim() || null,
+    packaging_note: line.packaging_note?.trim() || null,
+    weight: line.weight?.trim() || null,
     cap_pn_components: components,
   };
 }
@@ -149,6 +159,11 @@ export const ExtractedLineSchema = z
     material: z.string().nullable().optional(),
     finish: z.string().nullable().optional(),
     grade: z.string().nullable().optional(),
+    head_type: z.string().nullable().optional(),
+    stock_status: z.string().nullable().optional(),
+    availability_date: z.string().nullable().optional(),
+    packaging_note: z.string().nullable().optional(),
+    weight: z.string().nullable().optional(),
     cap_pn_components: CapPnComponentsSchema,
   })
   .transform(sanitizeLine);
