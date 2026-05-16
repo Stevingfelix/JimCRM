@@ -71,8 +71,8 @@ export async function markRfqSent(
   }
 }
 
-// Server-side: read vendors that share categories with the part(s) on the
-// quote. Used by the RFQ dialog to pre-populate "vendors who might quote this."
+// Server-side: read vendors, ranking those who've quoted these parts first.
+// Used by the RFQ dialog to suggest vendors Jim should ask.
 export async function suggestVendorsForRfq(args: {
   part_ids: string[];
 }): Promise<
@@ -82,6 +82,9 @@ export async function suggestVendorsForRfq(args: {
     categories: string[];
     contact_emails: string[];
     last_quote_age_days: number | null;
+    last_unit_price: number | null;
+    matched_part_count: number;
+    recommended: boolean;
   }>
 > {
   if (args.part_ids.length === 0) return [];
@@ -90,20 +93,24 @@ export async function suggestVendorsForRfq(args: {
   const { data: vendors } = await supabase
     .from("vendors")
     .select(
-      "id, name, categories, vendor_contacts(email), vendor_quotes(quoted_at, part_id)",
+      "id, name, categories, vendor_contacts(email), vendor_quotes(quoted_at, part_id, unit_price)",
     )
     .order("name", { ascending: true })
-    .limit(50);
+    .limit(100);
 
   type Row = {
     id: string;
     name: string;
     categories: string[] | null;
     vendor_contacts: Array<{ email: string | null }>;
-    vendor_quotes: Array<{ quoted_at: string; part_id: string | null }>;
+    vendor_quotes: Array<{
+      quoted_at: string;
+      part_id: string | null;
+      unit_price: number;
+    }>;
   };
 
-  return ((vendors ?? []) as unknown as Row[]).map((v) => {
+  const mapped = ((vendors ?? []) as unknown as Row[]).map((v) => {
     const matched_quotes = v.vendor_quotes.filter((vq) =>
       vq.part_id ? args.part_ids.includes(vq.part_id) : false,
     );
@@ -111,6 +118,9 @@ export async function suggestVendorsForRfq(args: {
       (a, b) => Date.parse(b.quoted_at) - Date.parse(a.quoted_at),
     );
     const last = matched_quotes[0];
+    const matchedPartIds = new Set(
+      matched_quotes.map((q) => q.part_id).filter(Boolean),
+    );
     return {
       id: v.id,
       name: v.name,
@@ -123,6 +133,24 @@ export async function suggestVendorsForRfq(args: {
             (Date.now() - Date.parse(last.quoted_at)) / (1000 * 60 * 60 * 24),
           )
         : null,
+      last_unit_price: last ? last.unit_price : null,
+      matched_part_count: matchedPartIds.size,
+      recommended: matchedPartIds.size > 0,
     };
   });
+
+  // Sort: recommended vendors first (by matched_part_count desc, then recency),
+  // then the rest alphabetically.
+  mapped.sort((a, b) => {
+    if (a.recommended && !b.recommended) return -1;
+    if (!a.recommended && b.recommended) return 1;
+    if (a.recommended && b.recommended) {
+      if (a.matched_part_count !== b.matched_part_count)
+        return b.matched_part_count - a.matched_part_count;
+      return (a.last_quote_age_days ?? 999) - (b.last_quote_age_days ?? 999);
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  return mapped;
 }

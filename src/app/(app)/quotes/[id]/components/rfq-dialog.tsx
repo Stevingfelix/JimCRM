@@ -41,6 +41,9 @@ type VendorOption = {
   categories: string[];
   contact_emails: string[];
   last_quote_age_days: number | null;
+  last_unit_price: number | null;
+  matched_part_count: number;
+  recommended: boolean;
 };
 
 export function RfqDialog({ quoteId, quoteNumber, lines }: Props) {
@@ -59,9 +62,14 @@ export function RfqDialog({ quoteId, quoteNumber, lines }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    suggestVendorsForRfq({ part_ids: selectedLines }).then((vs) =>
-      setVendors(vs),
-    );
+    suggestVendorsForRfq({ part_ids: selectedLines }).then((vs) => {
+      setVendors(vs);
+      // Auto-select recommended vendors (those who've quoted these parts before)
+      const recommended = vs.filter((v) => v.recommended).map((v) => v.id);
+      if (recommended.length > 0) {
+        setSelectedVendors(recommended);
+      }
+    });
   }, [open, selectedLines]);
 
   useEffect(() => {
@@ -204,41 +212,45 @@ export function RfqDialog({ quoteId, quoteNumber, lines }: Props) {
 
             <div className="space-y-1.5">
               <Label>Vendors</Label>
-              <div className="rounded-lg border divide-y bg-card max-h-60 overflow-auto">
+              <div className="rounded-lg border bg-card max-h-72 overflow-auto">
                 {vendors.length === 0 ? (
                   <div className="px-3 py-6 text-center text-xs text-muted-foreground">
                     No vendors configured. Add some in /vendors first.
                   </div>
                 ) : (
-                  vendors.map((v) => (
-                    <label
-                      key={v.id}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 text-sm cursor-pointer",
-                        selectedVendors.includes(v.id)
-                          ? "bg-brand-gradient-soft"
-                          : "hover:bg-muted/40",
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedVendors.includes(v.id)}
-                        onChange={() => toggleVendor(v.id)}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{v.name}</div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {v.categories.join(", ") || "no categories"}
-                          {v.contact_emails[0] && ` · ${v.contact_emails[0]}`}
-                        </div>
+                  <>
+                    {vendors.some((v) => v.recommended) && (
+                      <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-50/60 dark:bg-emerald-950/30 border-b">
+                        Suggested — previously quoted these parts
                       </div>
-                      {v.last_quote_age_days != null && (
-                        <span className="text-[10px] text-muted-foreground tabular-nums">
-                          last quote {v.last_quote_age_days}d ago
-                        </span>
+                    )}
+                    {vendors
+                      .filter((v) => v.recommended)
+                      .map((v) => (
+                        <VendorRow
+                          key={v.id}
+                          vendor={v}
+                          selected={selectedVendors.includes(v.id)}
+                          onToggle={() => toggleVendor(v.id)}
+                        />
+                      ))}
+                    {vendors.some((v) => v.recommended) &&
+                      vendors.some((v) => !v.recommended) && (
+                        <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 border-y">
+                          Other vendors
+                        </div>
                       )}
-                    </label>
-                  ))
+                    {vendors
+                      .filter((v) => !v.recommended)
+                      .map((v) => (
+                        <VendorRow
+                          key={v.id}
+                          vendor={v}
+                          selected={selectedVendors.includes(v.id)}
+                          onToggle={() => toggleVendor(v.id)}
+                        />
+                      ))}
+                  </>
                 )}
               </div>
             </div>
@@ -282,5 +294,72 @@ export function RfqDialog({ quoteId, quoteNumber, lines }: Props) {
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function VendorRow({
+  vendor: v,
+  selected,
+  onToggle,
+}: {
+  vendor: VendorOption;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "flex items-center gap-3 px-3 py-2.5 text-sm cursor-pointer border-b last:border-b-0",
+        selected
+          ? "bg-emerald-50/40 dark:bg-emerald-950/20"
+          : "hover:bg-muted/40",
+      )}
+    >
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={onToggle}
+        className="shrink-0"
+      />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium truncate">{v.name}</span>
+          {v.recommended && (
+            <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+              Suggested
+            </span>
+          )}
+          {!v.contact_emails[0] && (
+            <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+              No email
+            </span>
+          )}
+        </div>
+        <div className="text-xs text-muted-foreground truncate mt-0.5">
+          {v.contact_emails[0] && (
+            <span>{v.contact_emails[0]}</span>
+          )}
+          {v.contact_emails[0] && v.categories.length > 0 && " · "}
+          {v.categories.join(", ") || (!v.contact_emails[0] ? "no categories" : "")}
+        </div>
+      </div>
+      <div className="text-right shrink-0 space-y-0.5">
+        {v.last_unit_price != null && (
+          <div className="text-xs tabular-nums font-medium text-emerald-700 dark:text-emerald-400">
+            ${v.last_unit_price.toFixed(4)}
+          </div>
+        )}
+        {v.last_quote_age_days != null && (
+          <div className="text-[10px] text-muted-foreground tabular-nums">
+            {v.last_quote_age_days}d ago
+          </div>
+        )}
+        {v.recommended && v.matched_part_count > 0 && (
+          <div className="text-[10px] text-muted-foreground">
+            {v.matched_part_count} part{v.matched_part_count === 1 ? "" : "s"} matched
+          </div>
+        )}
+      </div>
+    </label>
   );
 }
