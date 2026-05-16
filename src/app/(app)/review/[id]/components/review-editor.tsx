@@ -28,6 +28,8 @@ import {
   searchCustomersAction,
   searchVendorsAction,
   searchDraftQuotesAction,
+  getVendorRecsAction,
+  type QuickVendorRec,
 } from "@/app/(app)/quotes/lookups";
 import type { DraftQuoteResult } from "@/app/(app)/quotes/lookups";
 import { NewCustomerDialog } from "@/app/(app)/customers/components/new-customer-dialog";
@@ -459,6 +461,9 @@ export function ReviewEditor({
                 }
                 placeholder="Search part…"
               />
+              {line.part_id && (
+                <VendorRecsInline partId={line.part_id} />
+              )}
               {line.match_source === "none" && !line.part_id && (
                 <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-2 py-1.5 text-xs text-amber-800 dark:text-amber-300 font-medium">
                   New part — not in catalog
@@ -621,6 +626,9 @@ export function ReviewEditor({
                       <div className="text-[10px] text-amber-700 mt-1">
                         fuzzy match — verify
                       </div>
+                    )}
+                    {line.part_id && (
+                      <VendorRecsInline partId={line.part_id} />
                     )}
                     {line.match_source === "none" && !line.part_id && (
                       <>
@@ -902,6 +910,65 @@ export function ReviewEditor({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** Inline vendor recommendation that auto-fetches when a part is linked. */
+function VendorRecsInline({ partId }: { partId: string }) {
+  const [recs, setRecs] = useState<QuickVendorRec[]>([]);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getVendorRecsAction(partId).then((r) => {
+      if (!cancelled) setRecs(r);
+    });
+    return () => { cancelled = true; };
+  }, [partId]);
+
+  if (recs.length === 0) return null;
+
+  const best = recs[0];
+  const alts = recs.slice(1);
+
+  return (
+    <div className="mt-1.5 rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/30 px-2.5 py-1.5 text-[11px]">
+      <div className="flex items-center gap-2.5">
+        <span className="inline-flex size-3.5 items-center justify-center rounded bg-emerald-600 text-white text-[8px] font-bold shrink-0">
+          V
+        </span>
+        <span className="font-medium text-foreground">{best.vendor_name}</span>
+        <span className="tabular-nums font-medium text-emerald-700 dark:text-emerald-400">
+          ${best.unit_price.toFixed(4)}
+        </span>
+        {best.lead_time_days != null && (
+          <span className="text-muted-foreground">{best.lead_time_days}d</span>
+        )}
+        {alts.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="ml-auto text-muted-foreground hover:text-foreground text-[10px]"
+          >
+            +{alts.length} more {expanded ? "▴" : "▾"}
+          </button>
+        )}
+      </div>
+      {expanded && alts.length > 0 && (
+        <div className="mt-1.5 pt-1.5 border-t border-emerald-200 dark:border-emerald-900 space-y-1">
+          {alts.map((a) => (
+            <div key={a.vendor_name} className="flex items-center gap-2.5 text-muted-foreground">
+              <span className="inline-flex size-3.5 items-center justify-center rounded bg-muted text-[8px] font-bold shrink-0">
+                V
+              </span>
+              <span className="text-foreground">{a.vendor_name}</span>
+              <span className="tabular-nums">${a.unit_price.toFixed(4)}</span>
+              {a.lead_time_days != null && <span>{a.lead_time_days}d</span>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
