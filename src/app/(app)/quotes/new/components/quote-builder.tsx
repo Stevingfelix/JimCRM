@@ -678,7 +678,7 @@ function PartCell({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<
-    Array<{ id: string; internal_pn: string; description: string | null }>
+    Array<{ id: string; internal_pn: string; short_description: string | null }>
   >([]);
   const boxRef = useRef<HTMLDivElement>(null);
 
@@ -757,7 +757,7 @@ function PartCell({
                       onUpdate({
                         part_id: p.id,
                         part_label: p.internal_pn,
-                        description: p.description ?? "",
+                        description: p.short_description ?? "",
                       });
                       setOpen(false);
                       setQuery("");
@@ -765,9 +765,9 @@ function PartCell({
                     className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
                   >
                     <div className="font-medium">{p.internal_pn}</div>
-                    {p.description && (
+                    {p.short_description && (
                       <div className="text-xs text-muted-foreground truncate">
-                        {p.description}
+                        {p.short_description}
                       </div>
                     )}
                   </button>

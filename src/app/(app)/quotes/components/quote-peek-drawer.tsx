@@ -238,7 +238,7 @@ function DrawerBody({
                         {line.part_internal_pn ?? "—"}
                       </div>
                       <div className="text-xs text-muted-foreground line-clamp-2">
-                        {line.part_description ?? ""}
+                        {line.part_short_description ?? ""}
                       </div>
                     </div>
                     <div className="text-right shrink-0">

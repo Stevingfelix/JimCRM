@@ -4,7 +4,7 @@ import { REVIEW_CONFIDENCE_THRESHOLD, type ExtractedLine } from "./_pattern";
 export type MatchedPart = {
   id: string;
   internal_pn: string;
-  description: string | null;
+  short_description: string | null;
 } | null;
 
 export type MatchSource =
@@ -40,7 +40,7 @@ export async function enrichLine(
   // 1) Exact internal_pn
   const { data: exact } = await supabase
     .from("parts")
-    .select("id, internal_pn, description")
+    .select("id, internal_pn, short_description")
     .eq("internal_pn", guess)
     .is("deleted_at", null)
     .maybeSingle();
@@ -56,14 +56,14 @@ export async function enrichLine(
   // 2) Exact alias
   const { data: aliasExact } = await supabase
     .from("part_aliases")
-    .select("alias_pn, parts!inner(id, internal_pn, description)")
+    .select("alias_pn, parts!inner(id, internal_pn, short_description)")
     .eq("alias_pn", guess)
     .limit(1)
     .maybeSingle();
   if (aliasExact) {
     type Row = {
       alias_pn: string;
-      parts: { id: string; internal_pn: string; description: string | null };
+      parts: { id: string; internal_pn: string; short_description: string | null };
     };
     const a = aliasExact as unknown as Row;
     return {
@@ -79,14 +79,14 @@ export async function enrichLine(
   const [partsRes, aliasRes] = await Promise.all([
     supabase
       .from("parts")
-      .select("id, internal_pn, description")
+      .select("id, internal_pn, short_description")
       .ilike("internal_pn", like)
       .is("deleted_at", null)
       .limit(1)
       .maybeSingle(),
     supabase
       .from("part_aliases")
-      .select("alias_pn, parts!inner(id, internal_pn, description)")
+      .select("alias_pn, parts!inner(id, internal_pn, short_description)")
       .ilike("alias_pn", like)
       .limit(1)
       .maybeSingle(),
@@ -103,7 +103,7 @@ export async function enrichLine(
   if (aliasRes.data) {
     type Row = {
       alias_pn: string;
-      parts: { id: string; internal_pn: string; description: string | null };
+      parts: { id: string; internal_pn: string; short_description: string | null };
     };
     const a = aliasRes.data as unknown as Row;
     return {

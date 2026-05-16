@@ -16,7 +16,8 @@ const ALIAS_SOURCES = ["customer", "manufacturer", "vendor", "other"] as const;
 const UpdatePartSchema = z.object({
   id: z.string().uuid(),
   internal_pn: z.string().trim().min(1).max(120),
-  description: z.string().trim().max(1000).nullable(),
+  short_description: z.string().trim().max(200).nullable(),
+  long_description: z.string().trim().max(5000).nullable(),
   internal_notes: z.string().trim().max(2000).nullable(),
 });
 
@@ -35,7 +36,8 @@ export async function updatePart(
       .from("parts")
       .update({
         internal_pn: parsed.data.internal_pn,
-        description: parsed.data.description,
+        short_description: parsed.data.short_description,
+        long_description: parsed.data.long_description,
         internal_notes: parsed.data.internal_notes,
         updated_by: userId,
       })
@@ -45,7 +47,7 @@ export async function updatePart(
       if (error.code === "23505") {
         return err(
           "duplicate",
-          `Internal PN "${parsed.data.internal_pn}" already exists`,
+          `SKU "${parsed.data.internal_pn}" already exists`,
         );
       }
       return err(error.code ?? "db_error", error.message);

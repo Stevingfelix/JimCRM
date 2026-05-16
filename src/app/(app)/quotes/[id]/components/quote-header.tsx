@@ -72,7 +72,7 @@ type Props = {
   lines: Array<{
     part_id: string | null;
     part_internal_pn: string | null;
-    part_description: string | null;
+    part_short_description: string | null;
     qty: number;
   }>;
   customerContacts: Array<{ name: string | null; email: string | null }>;

@@ -80,7 +80,8 @@ export function PartBuilder({ reference }: Props) {
   const [customPn, setCustomPn] = useState("");
 
   // Shared
-  const [description, setDescription] = useState("");
+  const [shortDescription, setShortDescription] = useState("");
+  const [longDescription, setLongDescription] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [targetMargin, setTargetMargin] = useState("30");
   const [pending, startTransition] = useTransition();
@@ -124,7 +125,8 @@ export function PartBuilder({ reference }: Props) {
     startTransition(async () => {
       const res = await createPart({
         internal_pn: previewPn!,
-        description: description.trim() || null,
+        short_description: shortDescription.trim() || null,
+        long_description: longDescription.trim() || null,
         internal_notes: internalNotes.trim() || null,
       });
       if (!res.ok) {
@@ -372,7 +374,7 @@ export function PartBuilder({ reference }: Props) {
               </Field>
             </div>
           ) : (
-            <Field label="Internal PN *" hint="Type the PN exactly as you want it stored.">
+            <Field label="SKU *" hint="Type the SKU exactly as you want it stored.">
               <Input
                 value={customPn}
                 onChange={(e) => setCustomPn(e.target.value)}
@@ -403,17 +405,30 @@ export function PartBuilder({ reference }: Props) {
         </section>
 
         {/* DESCRIPTION + NOTES */}
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
           <section className="rounded-2xl border border-foreground/[0.06] bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-6 space-y-3">
-            <h3 className="text-sm font-semibold">Description</h3>
+            <h3 className="text-sm font-semibold">Short description</h3>
             <p className="text-[11px] text-muted-foreground -mt-2">
-              Customer-facing — printed on quote PDFs.
+              Customer-facing — printed on quote PDFs. Max 200 characters.
+            </p>
+            <Input
+              value={shortDescription}
+              onChange={(e) => setShortDescription(e.target.value)}
+              maxLength={200}
+              placeholder='e.g. "Hex Cap Screw, 1/4-20 x 3/4, Grade 8 Yellow Zinc"'
+            />
+          </section>
+
+          <section className="rounded-2xl border border-foreground/[0.06] bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-6 space-y-3">
+            <h3 className="text-sm font-semibold">Long description</h3>
+            <p className="text-[11px] text-muted-foreground -mt-2">
+              Extended details, specifications, or catalog copy.
             </p>
             <Textarea
               rows={4}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder='e.g. "Hex Cap Screw, 1/4-20 x 3/4, Grade 8 Yellow Zinc"'
+              value={longDescription}
+              onChange={(e) => setLongDescription(e.target.value)}
+              placeholder="Full specification details…"
             />
           </section>
 

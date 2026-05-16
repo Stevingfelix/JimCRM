@@ -125,9 +125,9 @@ export function PartSearchCell({
                   </span>
                 )}
               </div>
-              {r.description && (
+              {r.short_description && (
                 <div className="text-xs text-muted-foreground truncate">
-                  {r.description}
+                  {r.short_description}
                 </div>
               )}
             </button>

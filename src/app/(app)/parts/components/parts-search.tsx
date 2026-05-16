@@ -28,7 +28,7 @@ export function PartsSearch() {
   return (
     <Input
       autoFocus
-      placeholder="Search internal PN, alias, description…"
+      placeholder="Search SKU, alias, description…"
       value={value}
       onChange={(e) => setValue(e.target.value)}
       className="max-w-md h-9"

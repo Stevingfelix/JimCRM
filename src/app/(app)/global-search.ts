@@ -24,10 +24,10 @@ export async function globalSearch(qRaw: string): Promise<GlobalSearchHit[]> {
       // issues with special chars in ERPAG part names (commas, parens, etc.)
       (async () => {
         const [byPn, byDesc] = await Promise.all([
-          supabase.from("parts").select("id, internal_pn, description")
+          supabase.from("parts").select("id, internal_pn, short_description")
             .ilike("internal_pn", like).is("deleted_at", null).limit(PER_KIND_LIMIT),
-          supabase.from("parts").select("id, internal_pn, description")
-            .ilike("description", like).is("deleted_at", null).limit(PER_KIND_LIMIT),
+          supabase.from("parts").select("id, internal_pn, short_description")
+            .ilike("short_description", like).is("deleted_at", null).limit(PER_KIND_LIMIT),
         ]);
         type Row = NonNullable<typeof byPn.data>[0];
         const seen = new Map<string, Row>();
@@ -86,7 +86,7 @@ export async function globalSearch(qRaw: string): Promise<GlobalSearchHit[]> {
       id: p.id,
       href: `/parts/${p.id}`,
       title: p.internal_pn,
-      subtitle: p.description,
+      subtitle: p.short_description,
     });
   }
   for (const c of customersRes.data ?? []) {

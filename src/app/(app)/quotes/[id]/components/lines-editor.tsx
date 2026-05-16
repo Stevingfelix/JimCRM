@@ -205,7 +205,7 @@ function LineRow({
     initial.part_internal_pn ?? "",
   );
   const [description, setDescription] = useState(
-    initial.part_description ?? "",
+    initial.part_short_description ?? "",
   );
   const [qty, setQty] = useState(String(initial.qty));
   const [unitPrice, setUnitPrice] = useState(
@@ -302,7 +302,7 @@ function LineRow({
                 onSelect={(p) => {
                   setPartId(p.id);
                   setPartDisplay(p.internal_pn);
-                  setDescription(p.description ?? "");
+                  setDescription(p.short_description ?? "");
                   setTimeout(persist, 0);
                 }}
                 onClear={() => {

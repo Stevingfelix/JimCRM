@@ -75,7 +75,7 @@ export async function suggestPrice(args: {
   const [partRes, historyRes, vendorRes, customerRes] = await Promise.all([
     supabase
       .from("parts")
-      .select("internal_pn, description, target_margin_pct")
+      .select("internal_pn, short_description, target_margin_pct")
       .eq("id", args.part_id)
       .maybeSingle(),
     supabase
@@ -124,11 +124,11 @@ export async function suggestPrice(args: {
   const ctx: string[] = [];
   const part = partRes.data as {
     internal_pn: string;
-    description: string | null;
+    short_description: string | null;
     target_margin_pct: number | string;
   };
   ctx.push(
-    `Part: ${part.internal_pn}${part.description ? ` — ${part.description}` : ""}`,
+    `Part: ${part.internal_pn}${part.short_description ? ` — ${part.short_description}` : ""}`,
   );
   ctx.push(`Target margin: ${Number(part.target_margin_pct).toFixed(1)}%`);
   const customer = customerRes.data as

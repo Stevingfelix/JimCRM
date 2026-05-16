@@ -2,7 +2,7 @@ export type QuotePdfLine = {
   qty: number;
   unit_price: number | null;
   part_internal_pn: string | null;
-  part_description: string | null;
+  part_short_description: string | null;
   line_notes_customer: string | null;
 };
 

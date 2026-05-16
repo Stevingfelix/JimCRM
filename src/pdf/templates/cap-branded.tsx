@@ -205,7 +205,7 @@ export function CapBrandedTemplate({ quote }: QuotePdfProps) {
               <Text style={styles.col_no}>{idx + 1}</Text>
               <Text style={styles.col_pn}>{line.part_internal_pn ?? "—"}</Text>
               <View style={styles.col_desc}>
-                <Text>{line.part_description ?? ""}</Text>
+                <Text>{line.part_short_description ?? ""}</Text>
                 {line.line_notes_customer && (
                   <Text style={styles.lineNotes}>{line.line_notes_customer}</Text>
                 )}

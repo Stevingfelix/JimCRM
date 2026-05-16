@@ -25,7 +25,7 @@ type Props = {
   onCreated: (part: {
     id: string;
     internal_pn: string;
-    description: string | null;
+    short_description: string | null;
   }) => void;
 };
 
@@ -63,7 +63,7 @@ export function InlineCreatePart({
     startTransition(async () => {
       const res = await createPartWithAlias({
         internal_pn: internalPn.trim(),
-        description: description.trim() || null,
+        short_description: description.trim() || null,
         alias_pn: aliasPn,
         alias_source_type: aliasSourceType,
         alias_source_name: aliasSourceName ?? null,
@@ -75,7 +75,7 @@ export function InlineCreatePart({
       onCreated({
         id: res.data.id,
         internal_pn: res.data.internal_pn,
-        description: description.trim() || null,
+        short_description: description.trim() || null,
       });
       toast.success(`Created ${res.data.internal_pn} (alias: ${aliasPn})`);
       reset();

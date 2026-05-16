@@ -29,7 +29,7 @@ export default async function QuoteDetailPage({
         lines={detail.lines.map((l) => ({
           part_id: l.part_id,
           part_internal_pn: l.part_internal_pn,
-          part_description: l.part_description,
+          part_short_description: l.part_short_description,
           qty: l.qty,
         }))}
         customerContacts={detail.quote.customer_contacts}

@@ -749,7 +749,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           deleted_at: string | null
-          description: string | null
+          short_description: string | null
+          long_description: string | null
           id: string
           internal_notes: string | null
           internal_pn: string
@@ -761,7 +762,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
-          description?: string | null
+          short_description?: string | null
+          long_description?: string | null
           id?: string
           internal_notes?: string | null
           internal_pn: string
@@ -773,7 +775,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
-          description?: string | null
+          short_description?: string | null
+          long_description?: string | null
           id?: string
           internal_notes?: string | null
           internal_pn?: string

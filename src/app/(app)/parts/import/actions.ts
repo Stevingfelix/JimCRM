@@ -9,7 +9,8 @@ import { type ActionResult, err, fromException, ok } from "@/lib/result";
 export type ImportRowPreview = {
   row_number: number;
   internal_pn: string;
-  description: string | null;
+  short_description: string | null;
+  long_description: string | null;
   internal_notes: string | null;
   aliases: Array<{ alias_pn: string; source_type: string | null; source_name: string | null }>;
   status: "ready" | "duplicate" | "error";
@@ -18,7 +19,8 @@ export type ImportRowPreview = {
 
 const RowSchema = z.object({
   internal_pn: z.string().trim().min(1).max(120),
-  description: z.string().trim().max(1000).optional().nullable(),
+  short_description: z.string().trim().max(200).optional().nullable(),
+  long_description: z.string().trim().max(5000).optional().nullable(),
   internal_notes: z.string().trim().max(2000).optional().nullable(),
   aliases: z
     .array(
@@ -40,7 +42,8 @@ const ALLOWED_SOURCE_TYPES = new Set([
 
 // Parses a CSV string into preview rows. Expected columns (case-insensitive):
 //   internal_pn (required)
-//   description
+//   short_description
+//   long_description
 //   internal_notes
 //   aliases — pipe-separated list of "pn|source_type|source_name" triples
 // Anything we can't parse is flagged as an error row so the UI can show what's
@@ -63,7 +66,8 @@ export async function parsePartsCsv(
     if (pnIdx < 0) {
       return err("validation", `Missing required column: internal_pn. Headers seen: ${header.join(", ")}`);
     }
-    const descIdx = colIdx("description");
+    const shortDescIdx = colIdx("short_description") >= 0 ? colIdx("short_description") : colIdx("description");
+    const longDescIdx = colIdx("long_description");
     const notesIdx = colIdx("internal_notes");
     const aliasIdx = colIdx("aliases");
 
@@ -88,7 +92,8 @@ export async function parsePartsCsv(
     for (let i = 1; i < lines.length; i++) {
       const cells = parseCsvLine(lines[i]);
       const pn = (cells[pnIdx] ?? "").trim();
-      const desc = descIdx >= 0 ? (cells[descIdx] ?? "").trim() || null : null;
+      const shortDesc = shortDescIdx >= 0 ? (cells[shortDescIdx] ?? "").trim() || null : null;
+      const longDesc = longDescIdx >= 0 ? (cells[longDescIdx] ?? "").trim() || null : null;
       const notes =
         notesIdx >= 0 ? (cells[notesIdx] ?? "").trim() || null : null;
       const aliasesRaw = aliasIdx >= 0 ? (cells[aliasIdx] ?? "").trim() : "";
@@ -116,7 +121,7 @@ export async function parsePartsCsv(
         error = "Missing internal_pn";
       } else if (existing.has(pn)) {
         status = "duplicate";
-        error = `Internal PN "${pn}" already exists`;
+        error = `SKU "${pn}" already exists`;
       } else if (seenPns.has(pn)) {
         status = "error";
         error = `Duplicate within file: ${pn}`;
@@ -124,7 +129,8 @@ export async function parsePartsCsv(
         seenPns.add(pn);
         const checked = RowSchema.safeParse({
           internal_pn: pn,
-          description: desc,
+          short_description: shortDesc,
+          long_description: longDesc,
           internal_notes: notes,
           aliases: aliases.filter((a) => a.alias_pn),
         });
@@ -137,7 +143,8 @@ export async function parsePartsCsv(
       rows.push({
         row_number: i + 1,
         internal_pn: pn,
-        description: desc,
+        short_description: shortDesc,
+        long_description: longDesc,
         internal_notes: notes,
         aliases,
         status,
@@ -155,7 +162,8 @@ const CommitSchema = z.object({
   rows: z.array(
     z.object({
       internal_pn: z.string().min(1).max(120),
-      description: z.string().nullable(),
+      short_description: z.string().nullable(),
+      long_description: z.string().nullable(),
       internal_notes: z.string().nullable(),
       aliases: z.array(
         z.object({
@@ -180,7 +188,8 @@ export async function commitPartsImport(
     // Insert all parts in a single batch.
     const partsPayload = parsed.data.rows.map((r) => ({
       internal_pn: r.internal_pn,
-      description: r.description,
+      short_description: r.short_description,
+      long_description: r.long_description,
       internal_notes: r.internal_notes,
       created_by: userId,
       updated_by: userId,

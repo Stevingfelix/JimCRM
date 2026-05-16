@@ -21,7 +21,7 @@ export default function PartsImportPage() {
         <div className="font-medium">CSV format</div>
         <p className="text-muted-foreground">
           Required column: <code className="text-foreground">internal_pn</code>
-          . Optional: <code>description</code>, <code>internal_notes</code>,{" "}
+          . Optional: <code>short_description</code>, <code>long_description</code>, <code>internal_notes</code>,{" "}
           <code>aliases</code>.
         </p>
         <p className="text-muted-foreground">
@@ -30,9 +30,9 @@ export default function PartsImportPage() {
           <code>customer</code>, <code>manufacturer</code>, <code>vendor</code>,{" "}
           <code>other</code>.
         </p>
-        <pre className="bg-muted/40 rounded-md p-3 text-xs overflow-auto">{`internal_pn,description,internal_notes,aliases
-CAP-2210,1/4-20 x 1" SHCS,Source from Fastenal,91251A537/manufacturer/McMaster|ACME-25-1-SHCS/customer/Acme
-CAP-1002,Nylon insert lock nut M6,,FS-NIL-M6/vendor/Fastenal`}</pre>
+        <pre className="bg-muted/40 rounded-md p-3 text-xs overflow-auto">{`internal_pn,short_description,long_description,internal_notes,aliases
+CAP-2210,1/4-20 x 1" SHCS,,Source from Fastenal,91251A537/manufacturer/McMaster|ACME-25-1-SHCS/customer/Acme
+CAP-1002,Nylon insert lock nut M6,,,FS-NIL-M6/vendor/Fastenal`}</pre>
       </div>
 
       <ImportClient />

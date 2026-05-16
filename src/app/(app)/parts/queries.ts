@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 export type PartListRow = {
   id: string;
   internal_pn: string;
-  description: string | null;
+  short_description: string | null;
   alias_count: number;
   last_quote_at: string | null;
 };
@@ -33,7 +33,7 @@ export async function listParts({
   // for short queries like "02" against 8,500+ parts.
   //
   // For non-search (browsing), we query parts directly.
-  let parts: { id: string; internal_pn: string; description: string | null }[];
+  let parts: { id: string; internal_pn: string; short_description: string | null }[];
   let count: number | null;
 
   if (term) {
@@ -54,22 +54,22 @@ export async function listParts({
     const [byPn, byDesc] = await Promise.all([
       supabase
         .from("parts")
-        .select("id, internal_pn, description")
+        .select("id, internal_pn, short_description")
         .is("deleted_at", null)
         .ilike("internal_pn", like)
         .order("internal_pn", { ascending: true })
         .limit(500),
       supabase
         .from("parts")
-        .select("id, internal_pn, description")
+        .select("id, internal_pn, short_description")
         .is("deleted_at", null)
-        .ilike("description", like)
+        .ilike("short_description", like)
         .order("internal_pn", { ascending: true })
         .limit(500),
     ]);
 
     // Merge results, deduplicate, then add alias-matched parts
-    type PartRow = { id: string; internal_pn: string; description: string | null };
+    type PartRow = { id: string; internal_pn: string; short_description: string | null };
     const seen = new Map<string, PartRow>();
     for (const r of byPn.data ?? []) seen.set(r.id, r);
     for (const r of byDesc.data ?? []) if (!seen.has(r.id)) seen.set(r.id, r);
@@ -79,7 +79,7 @@ export async function listParts({
     if (missingAliasIds.length > 0) {
       const { data: aliasParts } = await supabase
         .from("parts")
-        .select("id, internal_pn, description")
+        .select("id, internal_pn, short_description")
         .is("deleted_at", null)
         .in("id", missingAliasIds.slice(0, 200));
       for (const r of aliasParts ?? []) if (!seen.has(r.id)) seen.set(r.id, r);
@@ -94,7 +94,7 @@ export async function listParts({
   } else {
     const res = await supabase
       .from("parts")
-      .select("id, internal_pn, description", { count: "exact" })
+      .select("id, internal_pn, short_description", { count: "exact" })
       .is("deleted_at", null)
       .order("internal_pn", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
@@ -135,7 +135,7 @@ export async function listParts({
     rows: rows.map((r) => ({
       id: r.id,
       internal_pn: r.internal_pn,
-      description: r.description,
+      short_description: r.short_description,
       alias_count: aliasCounts.get(r.id) ?? 0,
       last_quote_at: lastQuote.get(r.id) ?? null,
     })),
@@ -149,7 +149,8 @@ export type PartDetail = {
   part: {
     id: string;
     internal_pn: string;
-    description: string | null;
+    short_description: string | null;
+    long_description: string | null;
     internal_notes: string | null;
   };
   aliases: Array<{
@@ -190,7 +191,7 @@ export async function getPartDetail(id: string): Promise<PartDetail | null> {
 
   const { data: part, error } = await supabase
     .from("parts")
-    .select("id, internal_pn, description, internal_notes")
+    .select("id, internal_pn, short_description, long_description, internal_notes")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -267,7 +268,8 @@ export async function getPartDetail(id: string): Promise<PartDetail | null> {
     part: {
       id: part.id,
       internal_pn: part.internal_pn,
-      description: part.description,
+      short_description: part.short_description,
+      long_description: part.long_description,
       internal_notes: part.internal_notes,
     },
     // source_type is TEXT in DB; narrowed here to the app's allowed values.

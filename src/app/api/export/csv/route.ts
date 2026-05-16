@@ -14,7 +14,7 @@ const DEFAULT_COLUMNS = [
   "validity_date",
   "line_position",
   "internal_pn",
-  "description",
+  "short_description",
   "qty",
   "unit_price",
   "line_total",
@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
     let query = supabase
       .from("quotes")
       .select(
-        "id, quote_number, status, validity_date, created_at, sent_at, customer_id, customers!inner(name), quote_lines(position, qty, unit_price, parts(internal_pn, description, created_at))",
+        "id, quote_number, status, validity_date, created_at, sent_at, customer_id, customers!inner(name), quote_lines(position, qty, unit_price, parts(internal_pn, short_description, created_at))",
       )
       .is("deleted_at", null);
 
@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
         unit_price: number | null;
         parts: {
           internal_pn: string;
-          description: string | null;
+          short_description: string | null;
           created_at: string;
         } | null;
       }>;
@@ -154,7 +154,7 @@ export async function GET(req: NextRequest) {
           validity_date: q.validity_date ?? "",
           line_position: l.position,
           internal_pn: l.parts?.internal_pn ?? "",
-          description: l.parts?.description ?? "",
+          short_description: l.parts?.short_description ?? "",
           qty: l.qty,
           unit_price: l.unit_price ?? "",
           line_total: lineTotal,

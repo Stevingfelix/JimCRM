@@ -30,7 +30,7 @@ type Props = {
   lines: Array<{
     part_id: string | null;
     part_internal_pn: string | null;
-    part_description: string | null;
+    part_short_description: string | null;
     qty: number;
   }>;
 };
@@ -69,7 +69,7 @@ export function RfqDialog({ quoteId, quoteNumber, lines }: Props) {
       .filter((l) => l.part_id && selectedLines.includes(l.part_id))
       .map(
         (l) =>
-          `- ${l.part_internal_pn ?? "(no PN)"}${l.part_description ? ` (${l.part_description})` : ""} — qty ${l.qty}`,
+          `- ${l.part_internal_pn ?? "(no PN)"}${l.part_short_description ? ` (${l.part_short_description})` : ""} — qty ${l.qty}`,
       )
       .join("\n");
     setBody(
@@ -192,7 +192,7 @@ export function RfqDialog({ quoteId, quoteNumber, lines }: Props) {
                       />
                       <span className="font-medium">{l.part_internal_pn}</span>
                       <span className="text-muted-foreground truncate flex-1">
-                        {l.part_description ?? ""}
+                        {l.part_short_description ?? ""}
                       </span>
                       <span className="text-xs text-muted-foreground tabular-nums">
                         qty {l.qty}

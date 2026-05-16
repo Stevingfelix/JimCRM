@@ -8,8 +8,9 @@ import { getCurrentUserId } from "@/lib/auth";
 import { type ActionResult, err, fromException, ok } from "@/lib/result";
 
 const CreatePartSchema = z.object({
-  internal_pn: z.string().trim().min(1, "Internal PN is required").max(120),
-  description: z.string().trim().max(1000).optional().nullable(),
+  internal_pn: z.string().trim().min(1, "SKU is required").max(120),
+  short_description: z.string().trim().max(200).optional().nullable(),
+  long_description: z.string().trim().max(5000).optional().nullable(),
   internal_notes: z.string().trim().max(2000).optional().nullable(),
 });
 
@@ -30,7 +31,8 @@ export async function createPart(
       .from("parts")
       .insert({
         internal_pn: parsed.data.internal_pn,
-        description: parsed.data.description ?? null,
+        short_description: parsed.data.short_description ?? null,
+        long_description: parsed.data.long_description ?? null,
         internal_notes: parsed.data.internal_notes ?? null,
         created_by: userId,
         updated_by: userId,
@@ -40,7 +42,7 @@ export async function createPart(
 
     if (error) {
       if (error.code === "23505") {
-        return err("duplicate", `Internal PN "${parsed.data.internal_pn}" already exists`);
+        return err("duplicate", `SKU "${parsed.data.internal_pn}" already exists`);
       }
       return err(error.code ?? "db_error", error.message);
     }
@@ -67,8 +69,8 @@ export async function createPartAndRedirect(input: CreatePartInput) {
 // review row can immediately link to it.
 
 const CreatePartWithAliasSchema = z.object({
-  internal_pn: z.string().trim().min(1, "Internal PN is required").max(120),
-  description: z.string().trim().max(1000).optional().nullable(),
+  internal_pn: z.string().trim().min(1, "SKU is required").max(120),
+  short_description: z.string().trim().max(1000).optional().nullable(),
   alias_pn: z.string().trim().min(1, "Alias is required").max(120),
   alias_source_type: z
     .enum(["customer", "manufacturer", "vendor", "other"])
@@ -91,7 +93,7 @@ export async function createPartWithAlias(
       .from("parts")
       .insert({
         internal_pn: parsed.data.internal_pn,
-        description: parsed.data.description ?? null,
+        short_description: parsed.data.short_description ?? null,
         created_by: userId,
         updated_by: userId,
       })
@@ -101,7 +103,7 @@ export async function createPartWithAlias(
       if (partErr.code === "23505") {
         return err(
           "duplicate",
-          `Internal PN "${parsed.data.internal_pn}" already exists — search for it instead.`,
+          `SKU "${parsed.data.internal_pn}" already exists — search for it instead.`,
         );
       }
       return err(partErr.code ?? "db_error", partErr.message);

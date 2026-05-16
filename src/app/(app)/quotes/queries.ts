@@ -188,7 +188,7 @@ export type QuoteLineDetail = {
   position: number;
   part_id: string | null;
   part_internal_pn: string | null;
-  part_description: string | null;
+  part_short_description: string | null;
   part_target_margin_pct: number | null;
   qty: number;
   unit_price: number | null;
@@ -301,7 +301,7 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
     supabase
       .from("quote_lines")
       .select(
-        "id, position, part_id, qty, unit_price, ai_suggested_price, ai_reasoning, override_reason, line_notes_internal, line_notes_customer, parts(internal_pn, description, target_margin_pct)",
+        "id, position, part_id, qty, unit_price, ai_suggested_price, ai_reasoning, override_reason, line_notes_internal, line_notes_customer, parts(internal_pn, short_description, target_margin_pct)",
       )
       .eq("quote_id", id)
       .order("position", { ascending: true }),
@@ -333,7 +333,7 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
     line_notes_customer: string | null;
     parts: {
       internal_pn: string;
-      description: string | null;
+      short_description: string | null;
       target_margin_pct: number | string | null;
     } | null;
   };
@@ -392,7 +392,7 @@ export async function getQuoteDetail(id: string): Promise<QuoteDetail | null> {
       position: l.position,
       part_id: l.part_id,
       part_internal_pn: l.parts?.internal_pn ?? null,
-      part_description: l.parts?.description ?? null,
+      part_short_description: l.parts?.short_description ?? null,
       part_target_margin_pct:
         l.parts?.target_margin_pct != null
           ? Number(l.parts.target_margin_pct)
@@ -521,7 +521,7 @@ export async function getPartHistory(partId: string): Promise<{
 export type PartSearchResult = {
   id: string;
   internal_pn: string;
-  description: string | null;
+  short_description: string | null;
   matched_alias: string | null;
 };
 
@@ -537,10 +537,10 @@ export async function searchPartsForLine(
     // with special chars in part names (commas, parens, etc.)
     (async () => {
       const [byPn, byDesc] = await Promise.all([
-        supabase.from("parts").select("id, internal_pn, description")
+        supabase.from("parts").select("id, internal_pn, short_description")
           .is("deleted_at", null).ilike("internal_pn", like).limit(20),
-        supabase.from("parts").select("id, internal_pn, description")
-          .is("deleted_at", null).ilike("description", like).limit(20),
+        supabase.from("parts").select("id, internal_pn, short_description")
+          .is("deleted_at", null).ilike("short_description", like).limit(20),
       ]);
       type Row = NonNullable<typeof byPn.data>[0];
       const seen = new Map<string, Row>();
@@ -560,7 +560,7 @@ export async function searchPartsForLine(
     seen.set(p.id, {
       id: p.id,
       internal_pn: p.internal_pn,
-      description: p.description,
+      short_description: p.short_description,
       matched_alias: null,
     });
   });
@@ -572,7 +572,7 @@ export async function searchPartsForLine(
   if (aliasPartIds.length > 0) {
     const { data: aliasParts } = await supabase
       .from("parts")
-      .select("id, internal_pn, description")
+      .select("id, internal_pn, short_description")
       .in("id", aliasPartIds)
       .is("deleted_at", null);
     const aliasMap = new Map(
@@ -582,7 +582,7 @@ export async function searchPartsForLine(
       seen.set(p.id, {
         id: p.id,
         internal_pn: p.internal_pn,
-        description: p.description,
+        short_description: p.short_description,
         matched_alias: aliasMap.get(p.id) ?? null,
       });
     });

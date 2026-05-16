@@ -16,7 +16,7 @@ export async function renderQuotePdf(quoteId: string): Promise<{
   const { data: quote, error } = await supabase
     .from("quotes")
     .select(
-      "id, quote_number, validity_date, customer_notes, created_at, customer_id, template_id, customers!inner(name), quote_lines(qty, unit_price, line_notes_customer, position, parts(internal_pn, description))",
+      "id, quote_number, validity_date, customer_notes, created_at, customer_id, template_id, customers!inner(name), quote_lines(qty, unit_price, line_notes_customer, position, parts(internal_pn, short_description))",
     )
     .eq("id", quoteId)
     .is("deleted_at", null)
@@ -38,7 +38,7 @@ export async function renderQuotePdf(quoteId: string): Promise<{
       unit_price: number | null;
       line_notes_customer: string | null;
       position: number;
-      parts: { internal_pn: string; description: string | null } | null;
+      parts: { internal_pn: string; short_description: string | null } | null;
     }>;
   };
   const q = quote as unknown as QuoteRow;
@@ -69,7 +69,7 @@ export async function renderQuotePdf(quoteId: string): Promise<{
         unit_price: l.unit_price,
         line_notes_customer: l.line_notes_customer,
         part_internal_pn: l.parts?.internal_pn ?? null,
-        part_description: l.parts?.description ?? null,
+        part_short_description: l.parts?.short_description ?? null,
       })),
     company: {
       company_name: company.company_name,

@@ -17,7 +17,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const DEFAULT_COLUMNS = [
   "internal_pn",
-  "description",
+  "short_description",
+  "long_description",
   "internal_notes",
   "aliases",
   "target_margin_pct",
@@ -68,7 +69,7 @@ export async function GET(req: NextRequest) {
     let partsQuery = supabase
       .from("parts")
       .select(
-        "id, internal_pn, description, internal_notes, target_margin_pct, created_at, part_aliases(alias_pn, source_type, source_name)",
+        "id, internal_pn, short_description, long_description, internal_notes, target_margin_pct, created_at, part_aliases(alias_pn, source_type, source_name)",
       )
       .is("deleted_at", null)
       .order("created_at", { ascending: true });
@@ -81,7 +82,8 @@ export async function GET(req: NextRequest) {
     type PartRow = {
       id: string;
       internal_pn: string;
-      description: string | null;
+      short_description: string | null;
+      long_description: string | null;
       internal_notes: string | null;
       target_margin_pct: number | string;
       created_at: string;
@@ -128,7 +130,8 @@ export async function GET(req: NextRequest) {
 
       const values: Record<string, string | number | null> = {
         internal_pn: p.internal_pn,
-        description: p.description ?? "",
+        short_description: p.short_description ?? "",
+        long_description: p.long_description ?? "",
         internal_notes: p.internal_notes ?? "",
         aliases: aliasesStr,
         target_margin_pct: Number(p.target_margin_pct),

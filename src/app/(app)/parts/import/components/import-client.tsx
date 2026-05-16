@@ -56,7 +56,8 @@ export function ImportClient() {
       const result = await commitPartsImport({
         rows: readableRows.map((r) => ({
           internal_pn: r.internal_pn,
-          description: r.description,
+          short_description: r.short_description,
+          long_description: r.long_description,
           internal_notes: r.internal_notes,
           aliases: r.aliases,
         })),
@@ -101,8 +102,8 @@ export function ImportClient() {
         rows={10}
         value={csv}
         onChange={(e) => setCsv(e.target.value)}
-        placeholder="internal_pn,description,internal_notes,aliases
-CAP-2210,1/4-20 SHCS,,
+        placeholder="internal_pn,short_description,long_description,internal_notes,aliases
+CAP-2210,1/4-20 SHCS,,,
 …"
         className="font-mono text-xs"
       />
@@ -147,8 +148,8 @@ CAP-2210,1/4-20 SHCS,,
               <thead className="bg-muted/40">
                 <tr className="text-left">
                   <th className="px-3 py-2 w-12">#</th>
-                  <th className="px-3 py-2">Internal PN</th>
-                  <th className="px-3 py-2">Description</th>
+                  <th className="px-3 py-2">SKU</th>
+                  <th className="px-3 py-2">Short description</th>
                   <th className="px-3 py-2">Aliases</th>
                   <th className="px-3 py-2">Status</th>
                 </tr>
@@ -167,7 +168,7 @@ CAP-2210,1/4-20 SHCS,,
                     </td>
                     <td className="px-3 py-2 font-medium">{r.internal_pn}</td>
                     <td className="px-3 py-2 text-muted-foreground truncate max-w-[300px]">
-                      {r.description ?? "—"}
+                      {r.short_description ?? "—"}
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
                       {r.aliases.length === 0

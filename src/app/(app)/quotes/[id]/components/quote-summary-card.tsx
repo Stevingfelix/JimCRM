@@ -140,13 +140,13 @@ export function QuoteSummaryCard({ quote, lines, company }: Props) {
                   <tr key={l.id} className="border-t border-foreground/[0.04]">
                     <td className="py-3.5 pr-4 align-top">
                       <div className="text-sm font-medium">
-                        {l.part_description ?? l.part_internal_pn ?? (
+                        {l.part_short_description ?? l.part_internal_pn ?? (
                           <span className="text-muted-foreground italic">
                             No description
                           </span>
                         )}
                       </div>
-                      {l.part_internal_pn && l.part_description && (
+                      {l.part_internal_pn && l.part_short_description && (
                         <div className="text-xs text-muted-foreground tabular-nums mt-0.5">
                           {l.part_internal_pn}
                         </div>

@@ -93,7 +93,7 @@ export function ReviewEditor({
       part_number_guess: l.part_number_guess ?? null,
       part_id: l.matched_part?.id ?? null,
       part_display: l.matched_part?.internal_pn ?? l.part_number_guess ?? "",
-      description: l.matched_part?.description ?? null,
+      description: l.matched_part?.short_description ?? null,
       qty: l.qty != null ? String(l.qty) : "",
       unit_price: l.unit_price != null ? String(l.unit_price) : "",
       lead_time_days: "",
@@ -420,7 +420,7 @@ export function ReviewEditor({
                   update(idx, {
                     part_id: p.id,
                     part_display: p.internal_pn,
-                    description: p.description,
+                    description: p.short_description,
                   })
                 }
                 onClear={() =>
@@ -442,7 +442,7 @@ export function ReviewEditor({
                     update(idx, {
                       part_id: part.id,
                       part_display: part.internal_pn,
-                      description: part.description,
+                      description: part.short_description,
                       accepted: true,
                     })
                   }
@@ -546,7 +546,7 @@ export function ReviewEditor({
                         update(idx, {
                           part_id: p.id,
                           part_display: p.internal_pn,
-                          description: p.description,
+                          description: p.short_description,
                         })
                       }
                       onClear={() =>
@@ -590,7 +590,7 @@ export function ReviewEditor({
                               update(idx, {
                                 part_id: part.id,
                                 part_display: part.internal_pn,
-                                description: part.description,
+                                description: part.short_description,
                                 accepted: true,
                               })
                             }

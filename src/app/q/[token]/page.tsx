@@ -18,7 +18,7 @@ export default async function PublicQuotePage({
   const { data, error } = await supabase
     .from("quotes")
     .select(
-      "id, quote_number, status, validity_date, customer_notes, created_at, customers!inner(name), quote_lines(position, qty, unit_price, line_notes_customer, parts(internal_pn, description))",
+      "id, quote_number, status, validity_date, customer_notes, created_at, customers!inner(name), quote_lines(position, qty, unit_price, line_notes_customer, parts(internal_pn, short_description))",
     )
     .eq("public_token", params.token)
     .is("deleted_at", null)
@@ -38,7 +38,7 @@ export default async function PublicQuotePage({
       qty: number;
       unit_price: number | null;
       line_notes_customer: string | null;
-      parts: { internal_pn: string; description: string | null } | null;
+      parts: { internal_pn: string; short_description: string | null } | null;
     }>;
   };
   const q = data as unknown as QuoteRow;
@@ -125,9 +125,9 @@ export default async function PublicQuotePage({
                         <div className="font-medium">
                           {l.parts?.internal_pn ?? "—"}
                         </div>
-                        {l.parts?.description && (
+                        {l.parts?.short_description && (
                           <div className="text-xs text-muted-foreground">
-                            {l.parts.description}
+                            {l.parts.short_description}
                           </div>
                         )}
                         {l.line_notes_customer && (

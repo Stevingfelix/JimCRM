@@ -13,7 +13,8 @@ type Props = {
   initial: {
     id: string;
     internal_pn: string;
-    description: string | null;
+    short_description: string | null;
+    long_description: string | null;
     internal_notes: string | null;
   };
 };
@@ -21,7 +22,8 @@ type Props = {
 export function PartForm({ initial }: Props) {
   const router = useRouter();
   const [pn, setPn] = useState(initial.internal_pn);
-  const [description, setDescription] = useState(initial.description ?? "");
+  const [shortDescription, setShortDescription] = useState(initial.short_description ?? "");
+  const [longDescription, setLongDescription] = useState(initial.long_description ?? "");
   const [internalNotes, setInternalNotes] = useState(
     initial.internal_notes ?? "",
   );
@@ -30,7 +32,8 @@ export function PartForm({ initial }: Props) {
 
   const dirty =
     pn !== initial.internal_pn ||
-    description !== (initial.description ?? "") ||
+    shortDescription !== (initial.short_description ?? "") ||
+    longDescription !== (initial.long_description ?? "") ||
     internalNotes !== (initial.internal_notes ?? "");
 
   const onSave = (e: React.FormEvent) => {
@@ -39,7 +42,8 @@ export function PartForm({ initial }: Props) {
       const result = await updatePart({
         id: initial.id,
         internal_pn: pn,
-        description: description || null,
+        short_description: shortDescription || null,
+        long_description: longDescription || null,
         internal_notes: internalNotes || null,
       });
       if (!result.ok) {
@@ -69,7 +73,7 @@ export function PartForm({ initial }: Props) {
   return (
     <form onSubmit={onSave} className="space-y-4">
       <div className="grid gap-1.5">
-        <Label htmlFor="pn">Internal PN *</Label>
+        <Label htmlFor="pn">SKU *</Label>
         <Input
           id="pn"
           value={pn}
@@ -78,12 +82,21 @@ export function PartForm({ initial }: Props) {
         />
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="desc">Description</Label>
+        <Label htmlFor="short-desc">Short description</Label>
+        <Input
+          id="short-desc"
+          value={shortDescription}
+          onChange={(e) => setShortDescription(e.target.value)}
+          maxLength={200}
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="long-desc">Long description</Label>
         <Textarea
-          id="desc"
-          rows={2}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          id="long-desc"
+          rows={3}
+          value={longDescription}
+          onChange={(e) => setLongDescription(e.target.value)}
         />
       </div>
       <div className="grid gap-1.5">

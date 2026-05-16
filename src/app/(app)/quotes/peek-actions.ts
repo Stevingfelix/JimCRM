@@ -19,7 +19,7 @@ export type QuotePeek = {
     qty: number;
     unit_price: number | null;
     part_internal_pn: string | null;
-    part_description: string | null;
+    part_short_description: string | null;
   }>;
 };
 
@@ -32,7 +32,7 @@ export async function getQuotePeek(id: string): Promise<QuotePeek | null> {
   const { data, error } = await supabase
     .from("quotes")
     .select(
-      "id, quote_number, customer_id, status, validity_date, sent_at, created_at, customer_notes, customers!inner(name), quote_lines(position, qty, unit_price, parts(internal_pn, description))",
+      "id, quote_number, customer_id, status, validity_date, sent_at, created_at, customer_notes, customers!inner(name), quote_lines(position, qty, unit_price, parts(internal_pn, short_description))",
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -54,7 +54,7 @@ export async function getQuotePeek(id: string): Promise<QuotePeek | null> {
       position: number;
       qty: number;
       unit_price: number | null;
-      parts: { internal_pn: string; description: string | null } | null;
+      parts: { internal_pn: string; short_description: string | null } | null;
     }>;
   };
   const q = data as unknown as Row;
@@ -84,7 +84,7 @@ export async function getQuotePeek(id: string): Promise<QuotePeek | null> {
       qty: l.qty,
       unit_price: l.unit_price,
       part_internal_pn: l.parts?.internal_pn ?? null,
-      part_description: l.parts?.description ?? null,
+      part_short_description: l.parts?.short_description ?? null,
     })),
   };
 }

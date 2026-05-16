@@ -78,7 +78,7 @@ export default async function PartsPage({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[180px]">Internal PN</TableHead>
+                <TableHead className="w-[180px]">SKU</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="w-[100px] text-right">Aliases</TableHead>
                 <TableHead className="w-[130px]">Last quote</TableHead>
@@ -108,7 +108,7 @@ export default async function PartsPage({
                       </Link>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground max-w-[600px]">
-                      {row.description ?? "—"}
+                      {row.short_description ?? "—"}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-sm whitespace-nowrap">
                       {row.alias_count || "—"}

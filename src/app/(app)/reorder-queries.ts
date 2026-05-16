@@ -5,7 +5,7 @@ export type ReorderHint = {
   customer_name: string;
   part_id: string;
   internal_pn: string;
-  description: string | null;
+  short_description: string | null;
   last_quote_at: string;
   avg_interval_days: number;
   days_since_last: number;
@@ -24,7 +24,7 @@ export async function getReorderHints(limit = 8): Promise<ReorderHint[]> {
   const { data, error } = await supabase
     .from("quote_lines")
     .select(
-      "part_id, created_at, parts!inner(id, internal_pn, description), quotes!inner(customer_id, customers!inner(id, name), status, deleted_at)",
+      "part_id, created_at, parts!inner(id, internal_pn, short_description), quotes!inner(customer_id, customers!inner(id, name), status, deleted_at)",
     )
     .not("part_id", "is", null)
     .order("created_at", { ascending: false })
@@ -34,7 +34,7 @@ export async function getReorderHints(limit = 8): Promise<ReorderHint[]> {
   type Row = {
     part_id: string | null;
     created_at: string;
-    parts: { id: string; internal_pn: string; description: string | null };
+    parts: { id: string; internal_pn: string; short_description: string | null };
     quotes: {
       customer_id: string;
       customers: { id: string; name: string };
@@ -56,7 +56,7 @@ export async function getReorderHints(limit = 8): Promise<ReorderHint[]> {
       customer_name: string;
       part_id: string;
       internal_pn: string;
-      description: string | null;
+      short_description: string | null;
     }
   > = {};
 
@@ -70,7 +70,7 @@ export async function getReorderHints(limit = 8): Promise<ReorderHint[]> {
         customer_name: row.quotes.customers.name,
         part_id: row.part_id,
         internal_pn: row.parts.internal_pn,
-        description: row.parts.description,
+        short_description: row.parts.short_description,
       };
     }
     if (row.quotes.status === "won") {
