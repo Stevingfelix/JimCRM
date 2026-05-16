@@ -7,6 +7,8 @@ import {
   Receipt,
   TrendingUp,
   AlertCircle,
+  DollarSign,
+  Trophy,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SetupBanner } from "@/components/setup-banner";
@@ -51,7 +53,32 @@ export default async function DashboardPage() {
           </h2>
           <span className="text-xs text-muted-foreground">Last 7 days</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <KpiCard
+            icon={<DollarSign className="size-4" />}
+            label="Quoted this month"
+            value={`$${data.kpis.quoted_this_month.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+            subline={new Date().toLocaleString("default", { month: "long" })}
+            tone="primary"
+            href="/quotes"
+          />
+          <KpiCard
+            icon={<Trophy className="size-4" />}
+            label="Win rate"
+            value={
+              data.kpis.win_rate != null
+                ? `${data.kpis.win_rate}%`
+                : "—"
+            }
+            subline={
+              data.kpis.win_rate != null
+                ? data.kpis.win_rate >= 50
+                  ? "Looking strong"
+                  : "Room to improve"
+                : "No won/lost quotes yet"
+            }
+            href="/quotes?status=won"
+          />
           <KpiCard
             icon={<Wallet className="size-4" />}
             label="Sent this week"
@@ -323,7 +350,7 @@ function KpiCard({
 }: {
   icon: React.ReactNode;
   label: string;
-  value: number;
+  value: number | string;
   subline: string;
   tone?: "default" | "primary";
   href: string;
@@ -348,7 +375,7 @@ function KpiCard({
         </div>
       </div>
       <div className="text-3xl font-semibold tabular-nums mt-3 tracking-tight">
-        {value.toLocaleString()}
+        {typeof value === "number" ? value.toLocaleString() : value}
       </div>
       <div className="text-xs text-muted-foreground mt-1.5">{subline}</div>
     </Link>

@@ -13,6 +13,8 @@ export type DashboardData = {
     drafts_in_progress: number;
     sent_this_week: number;
     parts_in_catalog: number;
+    quoted_this_month: number;
+    win_rate: number | null;
   };
   recent_quotes: Array<{
     id: string;
@@ -42,6 +44,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
@@ -56,6 +59,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     recentReviewRes,
     expiringSoonRes,
     staleSentRes,
+    quotedThisMonthRes,
+    wonRes,
+    lostRes,
   ] = await Promise.all([
     supabase
       .from("email_events")
@@ -113,6 +119,24 @@ export async function getDashboardData(): Promise<DashboardData> {
       .lt("sent_at", threeDaysAgo)
       .order("sent_at", { ascending: true })
       .limit(5),
+    // Total quoted value this month
+    supabase
+      .from("quotes")
+      .select("quote_lines(qty, unit_price)")
+      .is("deleted_at", null)
+      .gte("created_at", monthStart),
+    // Won quotes (all time) for win rate
+    supabase
+      .from("quotes")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "won")
+      .is("deleted_at", null),
+    // Lost quotes (all time) for win rate
+    supabase
+      .from("quotes")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "lost")
+      .is("deleted_at", null),
   ]);
 
   type QuoteRow = {
@@ -199,12 +223,31 @@ export async function getDashboardData(): Promise<DashboardData> {
     };
   });
 
+  // Compute total quoted value this month
+  type MonthRow = { quote_lines: Array<{ qty: number; unit_price: number | null }> };
+  const quotedTotal = ((quotedThisMonthRes.data ?? []) as unknown as MonthRow[]).reduce(
+    (sum, q) =>
+      sum +
+      q.quote_lines.reduce((ls, l) => {
+        if (l.unit_price == null) return ls;
+        return ls + l.qty * l.unit_price;
+      }, 0),
+    0,
+  );
+
+  // Win rate: won / (won + lost). Null if no terminal quotes yet.
+  const won = wonRes.count ?? 0;
+  const lost = lostRes.count ?? 0;
+  const winRate = won + lost > 0 ? Math.round((won / (won + lost)) * 100) : null;
+
   return {
     kpis: {
       pending_review: pendingReviewRes.count ?? 0,
       drafts_in_progress: draftsRes.count ?? 0,
       sent_this_week: sentRes.count ?? 0,
       parts_in_catalog: partsRes.count ?? 0,
+      quoted_this_month: quotedTotal,
+      win_rate: winRate,
     },
     recent_quotes,
     recent_review,
