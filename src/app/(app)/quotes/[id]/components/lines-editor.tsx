@@ -320,24 +320,30 @@ function LineRow({
         </TableCell>
         <TableCell className="py-2">
           <Input
-            type="number"
-            step="any"
-            min="0"
+            type="text"
+            inputMode="numeric"
             value={qty}
-            onChange={(e) => setQty(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value.replace(/[^0-9.]/g, "");
+              setQty(v);
+            }}
             onBlur={persist}
+            placeholder="0"
             className="h-8 text-right tabular-nums"
           />
         </TableCell>
         <TableCell className="py-2">
           <div className="flex items-center gap-2">
             <Input
-              type="number"
-              step="0.0001"
-              min="0"
+              type="text"
+              inputMode="decimal"
               value={unitPrice}
-              onChange={(e) => setUnitPrice(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^0-9.]/g, "");
+                setUnitPrice(v);
+              }}
               onBlur={persist}
+              placeholder="0.00"
               className="h-8 text-right tabular-nums w-[100px]"
             />
             <div className="flex items-center gap-1.5 text-[11px] whitespace-nowrap shrink-0">
@@ -613,11 +619,13 @@ function NewLineRow({ quoteId }: { quoteId: string }) {
       <TableCell />
       <TableCell>
         <Input
-          type="number"
-          step="any"
-          min="0"
+          type="text"
+          inputMode="numeric"
           value={qty}
-          onChange={(e) => setQty(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value.replace(/[^0-9.]/g, "");
+            setQty(v);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -630,11 +638,13 @@ function NewLineRow({ quoteId }: { quoteId: string }) {
       </TableCell>
       <TableCell>
         <Input
-          type="number"
-          step="0.0001"
-          min="0"
+          type="text"
+          inputMode="decimal"
           value={unitPrice}
-          onChange={(e) => setUnitPrice(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value.replace(/[^0-9.]/g, "");
+            setUnitPrice(v);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
