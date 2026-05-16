@@ -936,7 +936,7 @@ function SpecChips({ line, className }: { line: LineDraft; className?: string })
   if (line.finish) specs.push({ label: "Finish", value: line.finish });
   if (line.grade) specs.push({ label: "Grade", value: line.grade });
   if (line.stock_status) specs.push({
-    label: "Stock",
+    label: "Vendor stock",
     value: line.stock_status,
     color: line.stock_status.toLowerCase().includes("in stock")
       ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
