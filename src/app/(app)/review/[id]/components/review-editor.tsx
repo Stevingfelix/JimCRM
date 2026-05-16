@@ -472,10 +472,13 @@ export function ReviewEditor({
                   <div className="text-[10px] text-muted-foreground mb-0.5">Qty</div>
                   <Input
                     type="text"
-                    inputMode="decimal"
+                    inputMode="numeric"
                     value={line.qty}
-                    onChange={(e) => update(idx, { qty: e.target.value })}
-                    placeholder="0"
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/[^0-9.]/g, "");
+                      update(idx, { qty: v });
+                    }}
+                    placeholder="qty"
                     className="h-8 text-right tabular-nums"
                   />
                 </div>
@@ -487,8 +490,11 @@ export function ReviewEditor({
                     type="text"
                     inputMode="decimal"
                     value={line.unit_price}
-                    onChange={(e) => update(idx, { unit_price: e.target.value })}
-                    placeholder={mode === "customer" ? "optional" : "0.00"}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/[^0-9.]/g, "");
+                      update(idx, { unit_price: v });
+                    }}
+                    placeholder="$0.00"
                     className="h-8 text-right tabular-nums"
                   />
                 </div>
@@ -519,8 +525,8 @@ export function ReviewEditor({
               <TableHead className="w-[44px]" />
               <TableHead className="w-[260px]">Part</TableHead>
               <TableHead>Extracted from</TableHead>
-              <TableHead className="w-[80px] text-right">Qty</TableHead>
-              <TableHead className="w-[110px] text-right">
+              <TableHead className="w-[100px] text-right">Qty</TableHead>
+              <TableHead className="w-[120px] text-right">
                 {mode === "customer" ? "Unit $" : "Unit cost"}
               </TableHead>
               {mode === "vendor" && (
@@ -629,11 +635,14 @@ export function ReviewEditor({
                   <TableCell>
                     <Input
                       type="text"
-                      inputMode="decimal"
+                      inputMode="numeric"
                       value={line.qty}
-                      onChange={(e) => update(idx, { qty: e.target.value })}
-                      placeholder="0"
-                      className="h-8 text-right tabular-nums"
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/[^0-9.]/g, "");
+                        update(idx, { qty: v });
+                      }}
+                      placeholder="qty"
+                      className="h-8 w-full text-right tabular-nums"
                     />
                   </TableCell>
                   <TableCell>
@@ -641,11 +650,12 @@ export function ReviewEditor({
                       type="text"
                       inputMode="decimal"
                       value={line.unit_price}
-                      onChange={(e) =>
-                        update(idx, { unit_price: e.target.value })
-                      }
-                      placeholder={mode === "customer" ? "optional" : "0.00"}
-                      className="h-8 text-right tabular-nums"
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/[^0-9.]/g, "");
+                        update(idx, { unit_price: v });
+                      }}
+                      placeholder="$0.00"
+                      className="h-8 w-full text-right tabular-nums"
                     />
                   </TableCell>
                   {mode === "vendor" && (
