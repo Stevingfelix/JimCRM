@@ -12,6 +12,13 @@ const CreatePartSchema = z.object({
   short_description: z.string().trim().max(200).optional().nullable(),
   long_description: z.string().trim().max(5000).optional().nullable(),
   internal_notes: z.string().trim().max(2000).optional().nullable(),
+  thread_size: z.string().trim().max(120).optional().nullable(),
+  length: z.string().trim().max(120).optional().nullable(),
+  material: z.string().trim().max(120).optional().nullable(),
+  finish: z.string().trim().max(120).optional().nullable(),
+  grade: z.string().trim().max(120).optional().nullable(),
+  head_type: z.string().trim().max(120).optional().nullable(),
+  product_family: z.string().trim().max(120).optional().nullable(),
 });
 
 export type CreatePartInput = z.infer<typeof CreatePartSchema>;
@@ -34,6 +41,13 @@ export async function createPart(
         short_description: parsed.data.short_description ?? null,
         long_description: parsed.data.long_description ?? null,
         internal_notes: parsed.data.internal_notes ?? null,
+        thread_size: parsed.data.thread_size ?? null,
+        length: parsed.data.length ?? null,
+        material: parsed.data.material ?? null,
+        finish: parsed.data.finish ?? null,
+        grade: parsed.data.grade ?? null,
+        head_type: parsed.data.head_type ?? null,
+        product_family: parsed.data.product_family ?? null,
         created_by: userId,
         updated_by: userId,
       })
@@ -76,6 +90,13 @@ const CreatePartWithAliasSchema = z.object({
     .enum(["customer", "manufacturer", "vendor", "other"])
     .default("customer"),
   alias_source_name: z.string().trim().max(120).optional().nullable(),
+  thread_size: z.string().trim().max(120).optional().nullable(),
+  length: z.string().trim().max(120).optional().nullable(),
+  material: z.string().trim().max(120).optional().nullable(),
+  finish: z.string().trim().max(120).optional().nullable(),
+  grade: z.string().trim().max(120).optional().nullable(),
+  head_type: z.string().trim().max(120).optional().nullable(),
+  product_family: z.string().trim().max(120).optional().nullable(),
 });
 
 export async function createPartWithAlias(
@@ -94,6 +115,13 @@ export async function createPartWithAlias(
       .insert({
         internal_pn: parsed.data.internal_pn,
         short_description: parsed.data.short_description ?? null,
+        thread_size: parsed.data.thread_size ?? null,
+        length: parsed.data.length ?? null,
+        material: parsed.data.material ?? null,
+        finish: parsed.data.finish ?? null,
+        grade: parsed.data.grade ?? null,
+        head_type: parsed.data.head_type ?? null,
+        product_family: parsed.data.product_family ?? null,
         created_by: userId,
         updated_by: userId,
       })

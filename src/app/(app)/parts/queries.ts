@@ -51,7 +51,7 @@ export async function listParts({
     // We run two parallel queries (PN and description) and merge,
     // then paginate in-memory. This avoids both .or() parsing issues
     // and massive .in() URL payloads.
-    const [byPn, byDesc] = await Promise.all([
+    const [byPn, byDesc, byThread, byMaterial] = await Promise.all([
       supabase
         .from("parts")
         .select("id, internal_pn, short_description")
@@ -66,6 +66,20 @@ export async function listParts({
         .ilike("short_description", like)
         .order("internal_pn", { ascending: true })
         .limit(500),
+      supabase
+        .from("parts")
+        .select("id, internal_pn, short_description")
+        .is("deleted_at", null)
+        .ilike("thread_size", like)
+        .order("internal_pn", { ascending: true })
+        .limit(500),
+      supabase
+        .from("parts")
+        .select("id, internal_pn, short_description")
+        .is("deleted_at", null)
+        .ilike("material", like)
+        .order("internal_pn", { ascending: true })
+        .limit(500),
     ]);
 
     // Merge results, deduplicate, then add alias-matched parts
@@ -73,6 +87,8 @@ export async function listParts({
     const seen = new Map<string, PartRow>();
     for (const r of byPn.data ?? []) seen.set(r.id, r);
     for (const r of byDesc.data ?? []) if (!seen.has(r.id)) seen.set(r.id, r);
+    for (const r of byThread.data ?? []) if (!seen.has(r.id)) seen.set(r.id, r);
+    for (const r of byMaterial.data ?? []) if (!seen.has(r.id)) seen.set(r.id, r);
 
     // Fetch alias-matched parts that aren't already in the set
     const missingAliasIds = aliasIds.filter((id) => !seen.has(id));
@@ -152,6 +168,13 @@ export type PartDetail = {
     short_description: string | null;
     long_description: string | null;
     internal_notes: string | null;
+    thread_size: string | null;
+    length: string | null;
+    material: string | null;
+    finish: string | null;
+    grade: string | null;
+    head_type: string | null;
+    product_family: string | null;
   };
   aliases: Array<{
     id: string;
@@ -191,7 +214,7 @@ export async function getPartDetail(id: string): Promise<PartDetail | null> {
 
   const { data: part, error } = await supabase
     .from("parts")
-    .select("id, internal_pn, short_description, long_description, internal_notes")
+    .select("id, internal_pn, short_description, long_description, internal_notes, thread_size, length, material, finish, grade, head_type, product_family")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -271,6 +294,13 @@ export async function getPartDetail(id: string): Promise<PartDetail | null> {
       short_description: part.short_description,
       long_description: part.long_description,
       internal_notes: part.internal_notes,
+      thread_size: part.thread_size ?? null,
+      length: part.length ?? null,
+      material: part.material ?? null,
+      finish: part.finish ?? null,
+      grade: part.grade ?? null,
+      head_type: part.head_type ?? null,
+      product_family: part.product_family ?? null,
     },
     // source_type is TEXT in DB; narrowed here to the app's allowed values.
     // The form-level Zod schema enforces this on writes.

@@ -20,6 +20,12 @@ type Props = {
   // Optional sender / company name to record as alias_source_name. Helps
   // disambiguate "this is John at Acme's name for it" later.
   aliasSourceName: string | null;
+  // Parsed spec fields from extraction (read-only hints for now).
+  suggestedThreadSize?: string | null;
+  suggestedLength?: string | null;
+  suggestedMaterial?: string | null;
+  suggestedFinish?: string | null;
+  suggestedGrade?: string | null;
   // Called when the part is created. The row uses it to link the line to
   // the new CAP part (no further search needed).
   onCreated: (part: {
@@ -38,6 +44,11 @@ export function InlineCreatePart({
   suggestedDescription,
   aliasSourceType,
   aliasSourceName,
+  suggestedThreadSize,
+  suggestedLength,
+  suggestedMaterial,
+  suggestedFinish,
+  suggestedGrade,
   onCreated,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -136,6 +147,15 @@ export function InlineCreatePart({
           placeholder="Description"
           className="h-8 text-xs bg-card"
         />
+        {(suggestedThreadSize || suggestedLength || suggestedMaterial || suggestedFinish || suggestedGrade) && (
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground px-0.5">
+            {suggestedThreadSize && <span>Thread: {suggestedThreadSize}</span>}
+            {suggestedLength && <span>Length: {suggestedLength}</span>}
+            {suggestedMaterial && <span>Material: {suggestedMaterial}</span>}
+            {suggestedFinish && <span>Finish: {suggestedFinish}</span>}
+            {suggestedGrade && <span>Grade: {suggestedGrade}</span>}
+          </div>
+        )}
       </div>
       <div className="flex items-center justify-end gap-1.5">
         <Button

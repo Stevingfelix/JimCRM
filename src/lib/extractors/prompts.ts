@@ -17,7 +17,16 @@ Universal rules:
 - confidence < 0.7 when ANY of: PN ambiguous, qty unclear, line itself uncertain.
 - source_type: "customer_quote_request" (asking us to quote), "vendor_quote_reply" (offering us pricing), or "other" (non-quote, return lines: []).
 - customer_or_vendor_hint: free-text company name from sender/header if visible.
-- NEVER invent part numbers absent from the source. If a reference is vague ("those screws we had last time"), set part_number_guess=null and confidence low.`;
+- NEVER invent part numbers absent from the source. If a reference is vague ("those screws we had last time"), set part_number_guess=null and confidence low.
+
+Hardware specification extraction (IMPORTANT — always extract these when present):
+- description: the product type/name (e.g. "Locking helical insert", "Hex cap screw", "Flat washer"). Exclude the part number, qty, and price — just the item name.
+- thread_size: thread specification exactly as written (e.g. "#10-32", "1/4-20", "M8x1.25", "1/4\"-20"). Include both diameter and TPI/pitch.
+- length: dimensional length exactly as written (e.g. ".380", "3/4\\"", "20mm", "1-1/2\\"").
+- material: material if stated (e.g. "18-8 SS", "alloy steel", "brass", "A286").
+- finish: surface treatment if stated (e.g. "zinc", "yellow zinc", "cadmium", "passivated", "black oxide").
+- grade: strength grade/class if stated (e.g. "Grade 8", "Grade 5", "A2", "A4-80").
+These fields are nullable — only populate what is EXPLICITLY stated in the source text. Do NOT guess or infer specs that aren't written.`;
 
 // CAP part-number composition rules. Pairs with the rendered reference
 // data (families/sizes/threads/attributes) injected at call time.
@@ -133,6 +142,37 @@ export const EXTRACTION_TOOL = {
             unit_price: { type: ["number", "null"] },
             confidence: { type: "number", minimum: 0, maximum: 1 },
             reasoning: { type: "string" },
+            // Hardware specs — parsed from the description text alongside the PN.
+            description: {
+              type: ["string", "null"],
+              description:
+                "Product type/name (e.g. 'Locking helical insert', 'Hex cap screw'). Exclude PN, qty, price.",
+            },
+            thread_size: {
+              type: ["string", "null"],
+              description:
+                "Thread specification as written (e.g. '#10-32', '1/4-20', 'M8x1.25')",
+            },
+            length: {
+              type: ["string", "null"],
+              description:
+                "Length/dimension as written (e.g. '.380', '3/4\"', '20mm')",
+            },
+            material: {
+              type: ["string", "null"],
+              description:
+                "Material if stated (e.g. '18-8 SS', 'alloy steel', 'brass')",
+            },
+            finish: {
+              type: ["string", "null"],
+              description:
+                "Surface finish if stated (e.g. 'zinc', 'yellow zinc', 'cadmium')",
+            },
+            grade: {
+              type: ["string", "null"],
+              description:
+                "Strength grade if stated (e.g. 'Grade 8', 'A2', 'A4-80')",
+            },
             // CAP part-number breakdown. Null when the line doesn't fit
             // CAP's commercial schema (specials, aerospace, ambiguous).
             cap_pn_components: {

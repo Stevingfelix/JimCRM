@@ -755,6 +755,13 @@ export type Database = {
           internal_notes: string | null
           internal_pn: string
           target_margin_pct: number
+          product_family: string | null
+          thread_size: string | null
+          length: string | null
+          material: string | null
+          finish: string | null
+          grade: string | null
+          head_type: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -768,6 +775,13 @@ export type Database = {
           internal_notes?: string | null
           internal_pn: string
           target_margin_pct?: number
+          product_family?: string | null
+          thread_size?: string | null
+          length?: string | null
+          material?: string | null
+          finish?: string | null
+          grade?: string | null
+          head_type?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -781,6 +795,13 @@ export type Database = {
           internal_notes?: string | null
           internal_pn?: string
           target_margin_pct?: number
+          product_family?: string | null
+          thread_size?: string | null
+          length?: string | null
+          material?: string | null
+          finish?: string | null
+          grade?: string | null
+          head_type?: string | null
           updated_at?: string
           updated_by?: string | null
         }

@@ -15,6 +15,13 @@ const DEFAULT_COLUMNS = [
   "line_position",
   "internal_pn",
   "short_description",
+  "thread_size",
+  "length",
+  "material",
+  "finish",
+  "grade",
+  "head_type",
+  "product_family",
   "qty",
   "unit_price",
   "line_total",
@@ -90,7 +97,7 @@ export async function GET(req: NextRequest) {
     let query = supabase
       .from("quotes")
       .select(
-        "id, quote_number, status, validity_date, created_at, sent_at, customer_id, customers!inner(name), quote_lines(position, qty, unit_price, parts(internal_pn, short_description, created_at))",
+        "id, quote_number, status, validity_date, created_at, sent_at, customer_id, customers!inner(name), quote_lines(position, qty, unit_price, parts(internal_pn, short_description, thread_size, length, material, finish, grade, head_type, product_family, created_at))",
       )
       .is("deleted_at", null);
 
@@ -117,6 +124,13 @@ export async function GET(req: NextRequest) {
         parts: {
           internal_pn: string;
           short_description: string | null;
+          thread_size: string | null;
+          length: string | null;
+          material: string | null;
+          finish: string | null;
+          grade: string | null;
+          head_type: string | null;
+          product_family: string | null;
           created_at: string;
         } | null;
       }>;
@@ -155,6 +169,13 @@ export async function GET(req: NextRequest) {
           line_position: l.position,
           internal_pn: l.parts?.internal_pn ?? "",
           short_description: l.parts?.short_description ?? "",
+          thread_size: l.parts?.thread_size ?? "",
+          length: l.parts?.length ?? "",
+          material: l.parts?.material ?? "",
+          finish: l.parts?.finish ?? "",
+          grade: l.parts?.grade ?? "",
+          head_type: l.parts?.head_type ?? "",
+          product_family: l.parts?.product_family ?? "",
           qty: l.qty,
           unit_price: l.unit_price ?? "",
           line_total: lineTotal,

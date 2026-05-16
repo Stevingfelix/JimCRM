@@ -30,6 +30,12 @@ function sanitizeLine(line: {
   unit_price: number | null;
   confidence: number;
   reasoning: string;
+  description?: string | null;
+  thread_size?: string | null;
+  length?: string | null;
+  material?: string | null;
+  finish?: string | null;
+  grade?: string | null;
   cap_pn_components?: CapPnComponents;
 }) {
   const warnings: string[] = [];
@@ -105,6 +111,12 @@ function sanitizeLine(line: {
       warnings.length > 0
         ? `${line.reasoning} [⚠ ${warnings.join(", ")}]`
         : line.reasoning,
+    description: line.description?.trim() || null,
+    thread_size: line.thread_size?.trim() || null,
+    length: line.length?.trim() || null,
+    material: line.material?.trim() || null,
+    finish: line.finish?.trim() || null,
+    grade: line.grade?.trim() || null,
     cap_pn_components: components,
   };
 }
@@ -130,6 +142,13 @@ export const ExtractedLineSchema = z
     unit_price: z.number().nullable(),
     confidence: z.number().min(0).max(1),
     reasoning: z.string(),
+    // Hardware spec fields — parsed from description text alongside the PN.
+    description: z.string().nullable().optional(),
+    thread_size: z.string().nullable().optional(),
+    length: z.string().nullable().optional(),
+    material: z.string().nullable().optional(),
+    finish: z.string().nullable().optional(),
+    grade: z.string().nullable().optional(),
     cap_pn_components: CapPnComponentsSchema,
   })
   .transform(sanitizeLine);

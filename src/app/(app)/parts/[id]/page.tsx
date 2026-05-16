@@ -49,6 +49,22 @@ export default async function PartDetailPage({
         </span>
       </div>
 
+      {/* Spec summary — only non-null values */}
+      {(() => {
+        const specs: string[] = [];
+        if (detail.part.thread_size) specs.push(`Thread: ${detail.part.thread_size}`);
+        if (detail.part.length) specs.push(`Length: ${detail.part.length}`);
+        if (detail.part.material) specs.push(`Material: ${detail.part.material}`);
+        if (detail.part.finish) specs.push(`Finish: ${detail.part.finish}`);
+        if (detail.part.grade) specs.push(`Grade: ${detail.part.grade}`);
+        if (detail.part.head_type) specs.push(`Head: ${detail.part.head_type}`);
+        if (detail.part.product_family) specs.push(`Family: ${detail.part.product_family}`);
+        if (specs.length === 0) return null;
+        return (
+          <p className="text-sm text-muted-foreground">{specs.join(" \u00B7 ")}</p>
+        );
+      })()}
+
       <PartForm initial={detail.part} />
 
       <Separator />

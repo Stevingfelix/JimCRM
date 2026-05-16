@@ -75,7 +75,7 @@ export async function suggestPrice(args: {
   const [partRes, historyRes, vendorRes, customerRes] = await Promise.all([
     supabase
       .from("parts")
-      .select("internal_pn, short_description, target_margin_pct")
+      .select("internal_pn, short_description, target_margin_pct, thread_size, length, material, finish, grade, head_type, product_family")
       .eq("id", args.part_id)
       .maybeSingle(),
     supabase
@@ -126,10 +126,27 @@ export async function suggestPrice(args: {
     internal_pn: string;
     short_description: string | null;
     target_margin_pct: number | string;
+    thread_size: string | null;
+    length: string | null;
+    material: string | null;
+    finish: string | null;
+    grade: string | null;
+    head_type: string | null;
+    product_family: string | null;
   };
   ctx.push(
     `Part: ${part.internal_pn}${part.short_description ? ` — ${part.short_description}` : ""}`,
   );
+  // Include spec fields so the LLM has physical context for pricing
+  const specParts: string[] = [];
+  if (part.thread_size) specParts.push(`thread=${part.thread_size}`);
+  if (part.length) specParts.push(`length=${part.length}`);
+  if (part.material) specParts.push(`material=${part.material}`);
+  if (part.finish) specParts.push(`finish=${part.finish}`);
+  if (part.grade) specParts.push(`grade=${part.grade}`);
+  if (part.head_type) specParts.push(`head=${part.head_type}`);
+  if (part.product_family) specParts.push(`family=${part.product_family}`);
+  if (specParts.length > 0) ctx.push(`Specs: ${specParts.join(", ")}`);
   ctx.push(`Target margin: ${Number(part.target_margin_pct).toFixed(1)}%`);
   const customer = customerRes.data as
     | {

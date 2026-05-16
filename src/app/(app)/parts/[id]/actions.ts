@@ -19,6 +19,13 @@ const UpdatePartSchema = z.object({
   short_description: z.string().trim().max(200).nullable(),
   long_description: z.string().trim().max(5000).nullable(),
   internal_notes: z.string().trim().max(2000).nullable(),
+  thread_size: z.string().trim().max(120).nullable().optional(),
+  length: z.string().trim().max(120).nullable().optional(),
+  material: z.string().trim().max(120).nullable().optional(),
+  finish: z.string().trim().max(120).nullable().optional(),
+  grade: z.string().trim().max(120).nullable().optional(),
+  head_type: z.string().trim().max(120).nullable().optional(),
+  product_family: z.string().trim().max(120).nullable().optional(),
 });
 
 export async function updatePart(
@@ -39,6 +46,13 @@ export async function updatePart(
         short_description: parsed.data.short_description,
         long_description: parsed.data.long_description,
         internal_notes: parsed.data.internal_notes,
+        thread_size: parsed.data.thread_size ?? null,
+        length: parsed.data.length ?? null,
+        material: parsed.data.material ?? null,
+        finish: parsed.data.finish ?? null,
+        grade: parsed.data.grade ?? null,
+        head_type: parsed.data.head_type ?? null,
+        product_family: parsed.data.product_family ?? null,
         updated_by: userId,
       })
       .eq("id", parsed.data.id);

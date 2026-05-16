@@ -58,6 +58,11 @@ type LineDraft = {
   matched_alias: string | null;
   extraction_source: string;
   accepted: boolean;
+  thread_size: string | null;
+  length: string | null;
+  material: string | null;
+  finish: string | null;
+  grade: string | null;
 };
 
 type Props = {
@@ -111,6 +116,11 @@ export function ReviewEditor({
         (l.match_source === "internal_pn_exact" ||
           l.match_source === "alias_exact") &&
         l.qty != null,
+      thread_size: l.thread_size ?? null,
+      length: l.length ?? null,
+      material: l.material ?? null,
+      finish: l.finish ?? null,
+      grade: l.grade ?? null,
     })),
   );
   const [useExistingQuote, setUseExistingQuote] = useState(false);
@@ -460,6 +470,11 @@ export function ReviewEditor({
                   suggestedDescription={line.description ?? line.raw_text}
                   aliasSourceType={mode === "customer" ? "customer" : "vendor"}
                   aliasSourceName={picked?.name ?? vendorHint ?? null}
+                  suggestedThreadSize={line.thread_size}
+                  suggestedLength={line.length}
+                  suggestedMaterial={line.material}
+                  suggestedFinish={line.finish}
+                  suggestedGrade={line.grade}
                   onCreated={(part) =>
                     update(idx, {
                       part_id: part.id,
@@ -473,6 +488,16 @@ export function ReviewEditor({
               <div className="text-xs text-muted-foreground italic">
                 &ldquo;{line.raw_text}&rdquo;
               </div>
+              {(line.description || line.thread_size || line.length || line.material || line.finish || line.grade) && (
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
+                  {line.description && <span className="text-foreground font-medium">{line.description}</span>}
+                  {line.thread_size && <span>Thread: {line.thread_size}</span>}
+                  {line.length && <span>Length: {line.length}</span>}
+                  {line.material && <span>Material: {line.material}</span>}
+                  {line.finish && <span>Finish: {line.finish}</span>}
+                  {line.grade && <span>Grade: {line.grade}</span>}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <div className="text-[10px] text-muted-foreground mb-0.5">Qty</div>
@@ -614,6 +639,11 @@ export function ReviewEditor({
                             aliasSourceName={
                               picked?.name ?? vendorHint ?? null
                             }
+                            suggestedThreadSize={line.thread_size}
+                            suggestedLength={line.length}
+                            suggestedMaterial={line.material}
+                            suggestedFinish={line.finish}
+                            suggestedGrade={line.grade}
                             onCreated={(part) =>
                               update(idx, {
                                 part_id: part.id,
@@ -637,6 +667,16 @@ export function ReviewEditor({
                     <div className="not-italic mt-1 text-[10px]">
                       {line.reasoning}
                     </div>
+                    {(line.description || line.thread_size || line.length || line.material || line.finish || line.grade) && (
+                      <div className="not-italic mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px]">
+                        {line.description && <span className="text-foreground font-medium">{line.description}</span>}
+                        {line.thread_size && <span>Thread: {line.thread_size}</span>}
+                        {line.length && <span>Length: {line.length}</span>}
+                        {line.material && <span>Material: {line.material}</span>}
+                        {line.finish && <span>Finish: {line.finish}</span>}
+                        {line.grade && <span>Grade: {line.grade}</span>}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Input
