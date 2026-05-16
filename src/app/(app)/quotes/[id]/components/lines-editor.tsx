@@ -519,6 +519,7 @@ function VendorRecCallout({
           <span className="inline-flex size-4 items-center justify-center rounded bg-emerald-600 text-white text-[9px] font-bold shrink-0">
             V
           </span>
+          <span className="text-muted-foreground">Vendor cost:</span>
           <span className="font-medium text-foreground">
             {recommended.vendor_name}
           </span>
