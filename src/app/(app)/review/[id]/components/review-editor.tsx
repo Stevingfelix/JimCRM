@@ -417,12 +417,18 @@ export function ReviewEditor({
                   variant="outline"
                   className={cn(
                     "text-[10px]",
-                    line.confidence >= 0.7
-                      ? "text-emerald-700 border-emerald-200"
-                      : "text-amber-700 border-amber-200",
+                    line.part_id
+                      ? (line.match_source === "internal_pn_exact" || line.match_source === "alias_exact")
+                        ? "text-emerald-700 border-emerald-200"
+                        : "text-amber-700 border-amber-200"
+                      : "text-rose-700 border-rose-200",
                   )}
                 >
-                  {(line.confidence * 100).toFixed(0)}%
+                  {line.part_id
+                    ? (line.match_source === "internal_pn_exact" || line.match_source === "alias_exact")
+                      ? "Matched"
+                      : "Fuzzy"
+                    : "New part"}
                 </Badge>
               </div>
               <PartSearchCell
@@ -532,7 +538,7 @@ export function ReviewEditor({
               {mode === "vendor" && (
                 <TableHead className="w-[100px] text-right">Lead (d)</TableHead>
               )}
-              <TableHead className="w-[80px] text-right">Conf.</TableHead>
+              <TableHead className="w-[100px] text-right">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -673,21 +679,28 @@ export function ReviewEditor({
                     </TableCell>
                   )}
                   <TableCell className="text-right">
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-xs tabular-nums",
-                        line.confidence < 0.5 &&
-                          "bg-rose-50 text-rose-700 border-rose-200",
-                        line.confidence >= 0.5 &&
-                          line.confidence < 0.7 &&
-                          "bg-amber-50 text-amber-700 border-amber-200",
-                        line.confidence >= 0.7 &&
-                          "bg-emerald-50 text-emerald-700 border-emerald-200",
-                      )}
-                    >
-                      {line.confidence.toFixed(2)}
-                    </Badge>
+                    {line.part_id ? (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs",
+                          (line.match_source === "internal_pn_exact" || line.match_source === "alias_exact")
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800"
+                            : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800",
+                        )}
+                      >
+                        {(line.match_source === "internal_pn_exact" || line.match_source === "alias_exact")
+                          ? "Matched"
+                          : "Fuzzy"}
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="text-xs bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800"
+                      >
+                        New part
+                      </Badge>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
