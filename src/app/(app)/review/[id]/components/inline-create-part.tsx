@@ -1,43 +1,36 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { createPartWithAlias } from "@/app/(app)/parts/actions";
 
 type Props = {
-  // Customer's external PN that triggered the no-match state. Recorded as
-  // the new part's alias so the next RFQ for it auto-resolves.
   aliasPn: string;
-  // Free-text snippet pulled from the source (raw_text). Used as the
-  // suggested description.
   suggestedDescription: string;
-  // Where did the alias come from? "customer" for inbound RFQs (default),
-  // "vendor" for vendor replies — drives the alias source_type field.
   aliasSourceType: "customer" | "vendor";
-  // Optional sender / company name to record as alias_source_name. Helps
-  // disambiguate "this is John at Acme's name for it" later.
   aliasSourceName: string | null;
-  // Parsed spec fields from extraction (read-only hints for now).
   suggestedThreadSize?: string | null;
   suggestedLength?: string | null;
   suggestedMaterial?: string | null;
   suggestedFinish?: string | null;
   suggestedGrade?: string | null;
-  // Called when the part is created. The row uses it to link the line to
-  // the new CAP part (no further search needed).
   onCreated: (part: {
     id: string;
     internal_pn: string;
     short_description: string | null;
   }) => void;
 };
-
-// Inline form that appears in the review queue when an extracted line has
-// no matching CAP part. One Save click creates the CAP part AND records
-// the external PN as an alias.
 
 export function InlineCreatePart({
   aliasPn,
@@ -53,22 +46,33 @@ export function InlineCreatePart({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [internalPn, setInternalPn] = useState("");
-  const [description, setDescription] = useState(suggestedDescription);
+  // Strip qty + PN from suggested description — use only the descriptive text
+  const cleanDescription = suggestedDescription
+    .replace(/^\d[\d,]*\s*/, "") // leading qty
+    .replace(new RegExp(`^${aliasPn.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*`, "i"), "") // leading PN
+    .trim();
+  const [description, setDescription] = useState(cleanDescription);
+  const [threadSize, setThreadSize] = useState(suggestedThreadSize ?? "");
+  const [length, setLength] = useState(suggestedLength ?? "");
+  const [material, setMaterial] = useState(suggestedMaterial ?? "");
+  const [finish, setFinish] = useState(suggestedFinish ?? "");
+  const [grade, setGrade] = useState(suggestedGrade ?? "");
   const [pending, startTransition] = useTransition();
 
   function reset() {
     setOpen(false);
     setInternalPn("");
-    setDescription(suggestedDescription);
-  }
-
-  function copyAliasIntoInternal() {
-    setInternalPn(aliasPn);
+    setDescription(cleanDescription);
+    setThreadSize(suggestedThreadSize ?? "");
+    setLength(suggestedLength ?? "");
+    setMaterial(suggestedMaterial ?? "");
+    setFinish(suggestedFinish ?? "");
+    setGrade(suggestedGrade ?? "");
   }
 
   function handleSave() {
     if (!internalPn.trim()) {
-      toast.error("Pick a CAP internal PN first");
+      toast.error("Enter a CAP SKU");
       return;
     }
     startTransition(async () => {
@@ -78,6 +82,11 @@ export function InlineCreatePart({
         alias_pn: aliasPn,
         alias_source_type: aliasSourceType,
         alias_source_name: aliasSourceName ?? null,
+        thread_size: threadSize.trim() || null,
+        length: length.trim() || null,
+        material: material.trim() || null,
+        finish: finish.trim() || null,
+        grade: grade.trim() || null,
       });
       if (!res.ok) {
         toast.error(res.error.message);
@@ -93,8 +102,8 @@ export function InlineCreatePart({
     });
   }
 
-  if (!open) {
-    return (
+  return (
+    <>
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -103,81 +112,125 @@ export function InlineCreatePart({
         <Sparkles className="size-3" />
         Create CAP part + add &ldquo;{aliasPn}&rdquo; as alias
       </button>
-    );
-  }
 
-  return (
-    <div className="mt-2 rounded-md border border-primary/30 bg-brand-gradient-soft p-2.5 space-y-2">
-      <div className="flex items-center justify-between gap-2 text-[11px]">
-        <span className="text-muted-foreground">
-          New CAP part — alias{" "}
-          <code className="font-mono text-foreground">{aliasPn}</code>
-        </span>
-        <button
-          type="button"
-          onClick={reset}
-          aria-label="Cancel"
-          className="size-5 grid place-items-center rounded text-muted-foreground hover:text-foreground"
-        >
-          <X className="size-3.5" />
-        </button>
-      </div>
-      <div className="grid gap-1.5">
-        <div className="flex gap-1.5">
-          <Input
-            value={internalPn}
-            onChange={(e) => setInternalPn(e.target.value)}
-            placeholder="CAP internal PN (e.g. HCS 04C-0750G8Y)"
-            className="h-8 text-xs font-mono bg-card"
-            autoFocus
-          />
-          <button
-            type="button"
-            onClick={copyAliasIntoInternal}
-            disabled={pending}
-            title={`Use "${aliasPn}" as the internal PN`}
-            className="shrink-0 inline-flex h-8 items-center rounded-md border border-foreground/10 bg-card px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            Same as alias
-          </button>
-        </div>
-        <Input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Description"
-          className="h-8 text-xs bg-card"
-        />
-        {(suggestedThreadSize || suggestedLength || suggestedMaterial || suggestedFinish || suggestedGrade) && (
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground px-0.5">
-            {suggestedThreadSize && <span>Thread: {suggestedThreadSize}</span>}
-            {suggestedLength && <span>Length: {suggestedLength}</span>}
-            {suggestedMaterial && <span>Material: {suggestedMaterial}</span>}
-            {suggestedFinish && <span>Finish: {suggestedFinish}</span>}
-            {suggestedGrade && <span>Grade: {suggestedGrade}</span>}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-base">Create new CAP part</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              The external PN <code className="font-mono text-foreground">{aliasPn}</code> will
+              be saved as an alias so future RFQs auto-match.
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* SKU */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">CAP SKU</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={internalPn}
+                  onChange={(e) => setInternalPn(e.target.value)}
+                  placeholder="e.g. HCS 04C-0750G8Y"
+                  className="font-mono"
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInternalPn(aliasPn)}
+                  className="shrink-0 text-xs"
+                >
+                  Use alias as SKU
+                </Button>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Description</Label>
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. Locking helical insert"
+              />
+            </div>
+
+            {/* Specs grid */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">
+                Specifications (parsed from email)
+              </Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">Thread</div>
+                  <Input
+                    value={threadSize}
+                    onChange={(e) => setThreadSize(e.target.value)}
+                    placeholder="#10-32"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">Length</div>
+                  <Input
+                    value={length}
+                    onChange={(e) => setLength(e.target.value)}
+                    placeholder='.380"'
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">Material</div>
+                  <Input
+                    value={material}
+                    onChange={(e) => setMaterial(e.target.value)}
+                    placeholder="18-8 SS"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">Finish</div>
+                  <Input
+                    value={finish}
+                    onChange={(e) => setFinish(e.target.value)}
+                    placeholder="zinc"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">Grade</div>
+                  <Input
+                    value={grade}
+                    onChange={(e) => setGrade(e.target.value)}
+                    placeholder="Grade 8"
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
-      <div className="flex items-center justify-end gap-1.5">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={reset}
-          disabled={pending}
-          className="h-7 text-[11px] rounded-full"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          onClick={handleSave}
-          disabled={pending || !internalPn.trim()}
-          className="h-7 text-[11px] rounded-full"
-        >
-          {pending ? "Creating…" : "Create part"}
-        </Button>
-      </div>
-    </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={reset}
+              disabled={pending}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={pending || !internalPn.trim()}
+              className="rounded-full"
+            >
+              {pending ? "Creating..." : "Create part"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
